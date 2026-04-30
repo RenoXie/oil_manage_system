@@ -1,32 +1,45 @@
 @echo off
 setlocal enabledelayedexpansion
 chcp 65001 >nul
-title 油品管理系统 - 启动中...
+title OilMS - Startup
 
 echo.
-echo ════════════════════════════════════════════
-echo       油品进出库管理系统 - 一键启动
-echo ════════════════════════════════════════════
+echo ================================================
+echo      Oil Management System - One-Click Start
+echo ================================================
 echo.
 
+set "ROOT=%~dp0"
+
 :: ============================================
-:: 1. 检测 Node.js
+:: 1. Check Node.js
 :: ============================================
-echo [1/5] 检测 Node.js 环境...
+echo [1/7] Checking Node.js...
+
 where node >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [错误] 未找到 Node.js，请先安装 Node.js
-    echo 下载地址：https://nodejs.org/
+    echo [ERROR] Node.js not found. Please install Node.js first.
+    echo         Download: https://nodejs.org/
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('node -v') do echo        Node.js 版本: %%i
+
+for /f "tokens=*" %%i in ('node -v') do set NODE_VERSION=%%i
+echo        Version: !NODE_VERSION!
+
+for /f "tokens=2 delims=v." %%m in ("!NODE_VERSION!") do set NODE_MAJOR=%%m
+if !NODE_MAJOR! geq 18 (
+    set "NODE_CMD=node --watch src/app.js"
+) else (
+    set "NODE_CMD=node src/app.js"
+    echo        [WARN] --watch requires Node.js ^>= 18. Auto-reload disabled.
+)
 echo.
 
 :: ============================================
-:: 2. 检测并启动 MySQL
+:: 2. Check and start MySQL
 :: ============================================
-echo [2/5] 检测 MySQL 服务...
+echo [2/7] Checking MySQL...
 
 set MYSQL_SERVICE=
 for /f "tokens=2" %%s in ('sc query state^= all ^| findstr /i "SERVICE_NAME.*mysql"') do (
@@ -34,91 +47,146 @@ for /f "tokens=2" %%s in ('sc query state^= all ^| findstr /i "SERVICE_NAME.*mys
     goto :mysql_found
 )
 
-echo [错误] 未找到 MySQL 服务，请确认 MySQL 已安装
-echo 常见服务名: MySQL80, MySQL57, MySQL, MySQL80-localtest
+echo [ERROR] No MySQL service found.
+echo        Please install MySQL and ensure a Windows service is registered.
+echo        Common names: MySQL80, MySQL57, MySQL, MariaDB
 pause
 exit /b 1
 
 :mysql_found
-echo        MySQL 服务: !MYSQL_SERVICE!
+echo        Service: !MYSQL_SERVICE!
 
 sc query "!MYSQL_SERVICE!" | findstr "RUNNING" >nul
 if !errorlevel! neq 0 (
-    echo        MySQL 未运行，正在启动...
+    echo        Starting MySQL...
     sc start "!MYSQL_SERVICE!" >nul 2>&1
     if !errorlevel! neq 0 (
         net start "!MYSQL_SERVICE!" >nul 2>&1
+        if !errorlevel! neq 0 (
+            echo [ERROR] Failed to start MySQL. Try running as Administrator.
+            pause
+            exit /b 1
+        )
     )
-    :: 等待 MySQL 启动
     timeout /t 3 /nobreak >nul
-    echo        MySQL 已启动
+    echo        MySQL started.
 ) else (
-    echo        MySQL 已运行
+    echo        MySQL is running.
 )
 echo.
 
 :: ============================================
-:: 3. 安装依赖
+:: 3. Install dependencies
 :: ============================================
-echo [3/5] 检查项目依赖...
+echo [3/7] Installing dependencies...
 
-cd /d "%~dp0"
+cd /d "%ROOT%"
 
 if not exist "server\node_modules\" (
-    echo        安装后端依赖（首次运行需要，请稍候）...
+    echo        Installing server dependencies...
     cd server
     call npm install --registry=https://registry.npmmirror.com
+    if !errorlevel! neq 0 (
+        echo [ERROR] Server dependency install failed.
+        cd ..
+        pause
+        exit /b 1
+    )
     cd ..
 )
 
 if not exist "client\node_modules\" (
-    echo        安装前端依赖（首次运行需要，请稍候）...
+    echo        Installing client dependencies...
     cd client
     call npm install --registry=https://registry.npmmirror.com
+    if !errorlevel! neq 0 (
+        echo [ERROR] Client dependency install failed.
+        cd ..
+        pause
+        exit /b 1
+    )
     cd ..
 )
 
-echo        依赖检查完毕
+echo        Dependencies OK.
 echo.
 
 :: ============================================
-:: 4. 启动服务
+:: 4. Initialize database
 :: ============================================
-echo [4/5] 启动服务...
+echo [4/7] Initializing database...
 
-:: 启动后端 (新窗口)
-echo        启动后端服务 (端口 3000)...
-start "油品管理-后端服务" cmd /c "cd /d "%~dp0server" && node --watch src/app.js"
+cd /d "%ROOT%server"
 
-:: 等待后端启动
-timeout /t 4 /nobreak >nul
+echo        Creating database oilms...
+node setup-db.js
+if !errorlevel! neq 0 (
+    echo [ERROR] Database creation failed.
+    echo        Check MySQL credentials in server\.env
+    cd ..
+    pause
+    exit /b 1
+)
 
-:: 启动前端 (新窗口)
-echo        启动前端服务 (端口 5173)...
-start "油品管理-前端服务" cmd /c "cd /d "%~dp0client" && npx vite --host"
+echo        Running migrations...
+call npx knex migrate:latest
+if !errorlevel! neq 0 (
+    echo [ERROR] Migration failed.
+    cd ..
+    pause
+    exit /b 1
+)
 
+echo        Running seeds...
+call npx knex seed:run
+if !errorlevel! neq 0 (
+    echo [ERROR] Seed failed.
+    cd ..
+    pause
+    exit /b 1
+)
+
+cd ..
+echo        Database is ready.
 echo.
 
 :: ============================================
-:: 5. 打开浏览器
+:: 5. Start backend (port 3000)
 :: ============================================
-echo [5/5] 打开浏览器...
+echo [5/7] Starting backend on port 3000...
+cd /d "%ROOT%server"
+start "OilMS-Backend" /d "%ROOT%server" cmd /c "title OilMS - Backend && !NODE_CMD!"
+cd ..
 timeout /t 3 /nobreak >nul
+echo        Backend started.
+echo.
+
+:: ============================================
+:: 6. Start frontend (port 5173)
+:: ============================================
+echo [6/7] Starting frontend on port 5173...
+start "OilMS-Frontend" /d "%ROOT%client" cmd /c "title OilMS - Frontend && npx vite --host"
+timeout /t 3 /nobreak >nul
+echo        Frontend started.
+echo.
+
+:: ============================================
+:: 7. Open browser
+:: ============================================
+echo [7/7] Opening browser...
+timeout /t 2 /nobreak >nul
 start http://localhost:5173
 
 echo.
-echo ════════════════════════════════════════════
-echo   启动完成！
+echo ================================================
+echo   Startup complete!
 echo.
-echo   前端地址: http://localhost:5173
-echo   后端地址: http://localhost:3000
-echo   默认账号: admin
-echo   默认密码: admin123
+echo   Frontend : http://localhost:5173
+echo   Backend  : http://localhost:3000
+echo   Login    : admin / admin123
 echo.
-echo   关闭此窗口不会影响服务运行
-echo   如需停止服务，请关闭"油品管理"窗口
-echo   或运行 stop.bat
-echo ════════════════════════════════════════════
+echo   Run stop.bat to stop all services.
+echo ================================================
 echo.
 
 pause

@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
 
 exports.seed = async function (knex) {
+  const adminExists = await knex('users').where('username', 'admin').first();
+  if (adminExists) return;
+
   await knex('stock_out').del();
   await knex('stock_in').del();
   await knex('oil_categories').del();
