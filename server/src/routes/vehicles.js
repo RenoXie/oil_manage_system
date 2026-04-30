@@ -6,7 +6,7 @@ const router = express.Router();
 router.use(auth);
 
 router.get('/', async (req, res) => {
-  const list = await db('vehicles').orderBy('created_at', 'desc');
+  const list = await db('vehicles').where({ deletestatus: 0 }).orderBy('created_at', 'desc');
   res.json({ code: 0, data: list });
 });
 
@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
   if (!plate_number) {
     return res.status(400).json({ code: 400, msg: '车牌号不能为空' });
   }
-  const exists = await db('vehicles').where({ plate_number }).first();
+  const exists = await db('vehicles').where({ plate_number, deletestatus: 0 }).first();
   if (exists) {
     return res.status(400).json({ code: 400, msg: '车牌号已存在' });
   }
@@ -26,22 +26,17 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { plate_number, notes } = req.body;
   if (plate_number) {
-    const exists = await db('vehicles').where({ plate_number }).whereNot({ id: req.params.id }).first();
+    const exists = await db('vehicles').where({ plate_number, deletestatus: 0 }).whereNot({ id: req.params.id }).first();
     if (exists) {
       return res.status(400).json({ code: 400, msg: '车牌号已存在' });
     }
   }
-  await db('vehicles').where({ id: req.params.id }).update({ plate_number, notes });
+  await db('vehicles').where({ id: req.params.id, deletestatus: 0 }).update({ plate_number, notes });
   res.json({ code: 0, msg: '更新成功' });
 });
 
 router.delete('/:id', async (req, res) => {
-  const inUse = await db('stock_in').where({ vehicle_id: req.params.id }).first();
-  const outUse = await db('stock_out').where({ vehicle_id: req.params.id }).first();
-  if (inUse || outUse) {
-    return res.status(400).json({ code: 400, msg: '该车辆已有出入库记录，无法删除' });
-  }
-  await db('vehicles').where({ id: req.params.id }).del();
+  await db('vehicles').where({ id: req.params.id }).update({ deletestatus: 1 });
   res.json({ code: 0, msg: '删除成功' });
 });
 

@@ -11,7 +11,7 @@ router.post('/login', async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ code: 400, msg: '用户名和密码不能为空' });
   }
-  const user = await db('users').where({ username }).first();
+  const user = await db('users').where({ username, deletestatus: 0 }).first();
   if (!user) {
     return res.status(401).json({ code: 401, msg: '用户名或密码错误' });
   }
@@ -41,7 +41,7 @@ router.post('/register', auth, async (req, res) => {
   if (!username || !password || !real_name) {
     return res.status(400).json({ code: 400, msg: '请填写完整信息' });
   }
-  const exists = await db('users').where({ username }).first();
+  const exists = await db('users').where({ username, deletestatus: 0 }).first();
   if (exists) {
     return res.status(400).json({ code: 400, msg: '用户名已存在' });
   }
@@ -56,7 +56,7 @@ router.post('/register', auth, async (req, res) => {
 });
 
 router.get('/me', auth, async (req, res) => {
-  const user = await db('users').select('id', 'username', 'real_name', 'role').where({ id: req.user.id }).first();
+  const user = await db('users').select('id', 'username', 'real_name', 'role').where({ id: req.user.id, deletestatus: 0 }).first();
   res.json({ code: 0, data: user });
 });
 

@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(auth);
 
 router.get('/', adminOnly, async (req, res) => {
-  const users = await db('users').select('id', 'username', 'real_name', 'role', 'created_at');
+  const users = await db('users').select('id', 'username', 'real_name', 'role', 'created_at').where({ deletestatus: 0 });
   res.json({ code: 0, data: users });
 });
 
@@ -17,7 +17,7 @@ router.post('/', adminOnly, async (req, res) => {
   if (!username || !password || !real_name) {
     return res.status(400).json({ code: 400, msg: '请填写完整信息' });
   }
-  const exists = await db('users').where({ username }).first();
+  const exists = await db('users').where({ username, deletestatus: 0 }).first();
   if (exists) {
     return res.status(400).json({ code: 400, msg: '用户名已存在' });
   }
@@ -33,7 +33,7 @@ router.put('/:id', adminOnly, async (req, res) => {
   if (role) update.role = role;
   if (password) update.password = await bcrypt.hash(password, 10);
   update.updated_at = db.fn.now();
-  await db('users').where({ id: req.params.id }).update(update);
+  await db('users').where({ id: req.params.id, deletestatus: 0 }).update(update);
   res.json({ code: 0, msg: '更新成功' });
 });
 
@@ -41,7 +41,7 @@ router.delete('/:id', adminOnly, async (req, res) => {
   if (+req.params.id === req.user.id) {
     return res.status(400).json({ code: 400, msg: '不能删除自己' });
   }
-  await db('users').where({ id: req.params.id }).del();
+  await db('users').where({ id: req.params.id }).update({ deletestatus: 1 });
   res.json({ code: 0, msg: '删除成功' });
 });
 

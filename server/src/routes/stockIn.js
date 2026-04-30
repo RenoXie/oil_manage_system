@@ -18,7 +18,8 @@ router.get('/', async (req, res) => {
       'oil_categories.name as category_name',
       'vehicles.plate_number',
       'users.real_name as operator_name'
-    );
+    )
+    .where('stock_in.deletestatus', 0);
 
   if (start_date) query = query.where('stock_in.stock_date', '>=', start_date);
   if (end_date) query = query.where('stock_in.stock_date', '<=', end_date);
@@ -66,6 +67,7 @@ router.get('/:id', async (req, res) => {
       'users.real_name as operator_name'
     )
     .where('stock_in.id', req.params.id)
+    .where('stock_in.deletestatus', 0)
     .first();
   if (!record) return res.status(404).json({ code: 404, msg: '记录不存在' });
   res.json({ code: 0, data: record });
@@ -83,13 +85,18 @@ router.put('/:id', async (req, res) => {
   if (price_per_liter && liters) {
     update.total_amount = +(price_per_liter * liters).toFixed(2);
   } else if (price_per_liter || liters) {
-    const current = await db('stock_in').where({ id: req.params.id }).first();
+    const current = await db('stock_in').where({ id: req.params.id, deletestatus: 0 }).first();
     const p = price_per_liter || current.price_per_liter;
     const l = liters || current.liters;
     update.total_amount = +(p * l).toFixed(2);
   }
-  await db('stock_in').where({ id: req.params.id }).update(update);
+  await db('stock_in').where({ id: req.params.id, deletestatus: 0 }).update(update);
   res.json({ code: 0, msg: '更新成功' });
+});
+
+router.delete('/:id', async (req, res) => {
+  await db('stock_in').where({ id: req.params.id }).update({ deletestatus: 1 });
+  res.json({ code: 0, msg: '删除成功' });
 });
 
 module.exports = router;

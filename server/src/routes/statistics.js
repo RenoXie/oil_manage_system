@@ -16,6 +16,7 @@ router.get('/overview', async (req, res) => {
   };
 
   const inStats = await db('stock_in')
+    .where({ deletestatus: 0 })
     .andWhere(dateFilter)
     .sum('liters as total_liters')
     .sum('total_amount as total_amount')
@@ -23,6 +24,7 @@ router.get('/overview', async (req, res) => {
     .first();
 
   const outStats = await db('stock_out')
+    .where({ deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
@@ -35,6 +37,7 @@ router.get('/overview', async (req, res) => {
   // 按油品分类统计
   const inByCategory = await db('stock_in')
     .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
+    .where('stock_in.deletestatus', 0)
     .andWhere(dateFilter)
     .select('oil_categories.name')
     .sum('stock_in.liters as liters')
@@ -43,6 +46,7 @@ router.get('/overview', async (req, res) => {
 
   const outByCategory = await db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
+    .where('stock_out.deletestatus', 0)
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
@@ -79,7 +83,8 @@ router.get('/buyer', async (req, res) => {
   const query = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
     .join('vehicles', 'stock_out.vehicle_id', 'vehicles.id')
-    .where('stock_out.buyer_name', buyer);
+    .where('stock_out.buyer_name', buyer)
+    .where('stock_out.deletestatus', 0);
 
   if (start_date) query.where('stock_out.purchase_date', '>=', start_date);
   if (end_date) query.where('stock_out.purchase_date', '<=', end_date);
@@ -93,7 +98,7 @@ router.get('/buyer', async (req, res) => {
     .orderBy('stock_out.purchase_date', 'desc');
 
   const summary = await db('stock_out')
-    .where('buyer_name', buyer)
+    .where({ buyer_name: buyer, deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
@@ -122,6 +127,7 @@ router.get('/buyers', async (req, res) => {
   const { start_date, end_date } = req.query;
 
   const query = db('stock_out')
+    .where({ deletestatus: 0 })
     .select('buyer_name')
     .sum('liters as total_liters')
     .sum('total_amount as total_amount')

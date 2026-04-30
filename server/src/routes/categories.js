@@ -6,7 +6,7 @@ const router = express.Router();
 router.use(auth);
 
 router.get('/', async (req, res) => {
-  const list = await db('oil_categories').orderBy('created_at', 'desc');
+  const list = await db('oil_categories').where({ deletestatus: 0 }).orderBy('created_at', 'desc');
   res.json({ code: 0, data: list });
 });
 
@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
   if (!name) {
     return res.status(400).json({ code: 400, msg: '类别名称不能为空' });
   }
-  const exists = await db('oil_categories').where({ name }).first();
+  const exists = await db('oil_categories').where({ name, deletestatus: 0 }).first();
   if (exists) {
     return res.status(400).json({ code: 400, msg: '类别已存在' });
   }
@@ -26,22 +26,17 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { name } = req.body;
   if (name) {
-    const exists = await db('oil_categories').where({ name }).whereNot({ id: req.params.id }).first();
+    const exists = await db('oil_categories').where({ name, deletestatus: 0 }).whereNot({ id: req.params.id }).first();
     if (exists) {
       return res.status(400).json({ code: 400, msg: '类别名已存在' });
     }
   }
-  await db('oil_categories').where({ id: req.params.id }).update({ name });
+  await db('oil_categories').where({ id: req.params.id, deletestatus: 0 }).update({ name });
   res.json({ code: 0, msg: '更新成功' });
 });
 
 router.delete('/:id', async (req, res) => {
-  const inUse = await db('stock_in').where({ oil_category_id: req.params.id }).first();
-  const outUse = await db('stock_out').where({ oil_category_id: req.params.id }).first();
-  if (inUse || outUse) {
-    return res.status(400).json({ code: 400, msg: '该类别已有出入库记录，无法删除' });
-  }
-  await db('oil_categories').where({ id: req.params.id }).del();
+  await db('oil_categories').where({ id: req.params.id }).update({ deletestatus: 1 });
   res.json({ code: 0, msg: '删除成功' });
 });
 

@@ -22,14 +22,17 @@ router.get('/', async (req, res) => {
     LEFT JOIN (
       SELECT vehicle_id, oil_category_id, SUM(liters) AS total_liters
       FROM stock_in
+      WHERE deletestatus = 0
       GROUP BY vehicle_id, oil_category_id
     ) si ON v.id = si.vehicle_id
     LEFT JOIN (
       SELECT vehicle_id, oil_category_id, SUM(liters) AS total_liters
       FROM stock_out
+      WHERE deletestatus = 0
       GROUP BY vehicle_id, oil_category_id
     ) so ON v.id = so.vehicle_id AND si.oil_category_id = so.oil_category_id
     LEFT JOIN oil_categories oc ON (oc.id = si.oil_category_id OR oc.id = so.oil_category_id)
+    WHERE v.deletestatus = 0
     GROUP BY v.id, v.plate_number, oc.id, oc.name
     HAVING remaining != 0 OR (total_in IS NULL AND total_out IS NULL)
     ORDER BY v.id, oc.id
@@ -43,7 +46,7 @@ router.get('/:vehicleId', async (req, res) => {
   const { vehicleId } = req.params;
   const { start_date, end_date } = req.query;
 
-  const vehicle = await db('vehicles').where({ id: vehicleId }).first();
+  const vehicle = await db('vehicles').where({ id: vehicleId, deletestatus: 0 }).first();
   if (!vehicle) return res.status(404).json({ code: 404, msg: '车辆不存在' });
 
   let inQuery = db('stock_in')
@@ -60,7 +63,8 @@ router.get('/:vehicleId', async (req, res) => {
       'users.real_name AS operator_name',
       'stock_in.remark'
     )
-    .where('stock_in.vehicle_id', vehicleId);
+    .where('stock_in.vehicle_id', vehicleId)
+    .where('stock_in.deletestatus', 0);
 
   let outQuery = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
@@ -76,7 +80,8 @@ router.get('/:vehicleId', async (req, res) => {
       'users.real_name AS operator_name',
       'stock_out.remark'
     )
-    .where('stock_out.vehicle_id', vehicleId);
+    .where('stock_out.vehicle_id', vehicleId)
+    .where('stock_out.deletestatus', 0);
 
   if (start_date) {
     inQuery = inQuery.where('stock_in.stock_date', '>=', start_date);
@@ -92,7 +97,7 @@ router.get('/:vehicleId', async (req, res) => {
 
   // 汇总
   const inSummary = await db('stock_in')
-    .where({ vehicle_id: vehicleId })
+    .where({ vehicle_id: vehicleId, deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('stock_date', '>=', start_date);
       if (end_date) qb.where('stock_date', '<=', end_date);
@@ -102,7 +107,7 @@ router.get('/:vehicleId', async (req, res) => {
     .first();
 
   const outSummary = await db('stock_out')
-    .where({ vehicle_id: vehicleId })
+    .where({ vehicle_id: vehicleId, deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
