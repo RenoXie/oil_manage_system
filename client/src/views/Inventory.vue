@@ -60,7 +60,9 @@
             <el-tag :type="row.type==='入库'?'success':'danger'" size="small">{{ row.type }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="date" label="日期" width="120" />
+        <el-table-column prop="date" label="日期" width="120">
+          <template #default="{ row }">{{ formatDate(row.date) }}</template>
+        </el-table-column>
         <el-table-column prop="category_name" label="油品" width="100" />
         <el-table-column prop="liters" label="数量(L)">
           <template #default="{ row }">{{ (+row.liters).toFixed(2) }}</template>
@@ -79,6 +81,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getInventory, getVehicleDetail } from '../api/inventory'
+import { formatDate } from '../utils/date'
 
 const inventory = ref([])
 const loading = ref(false)

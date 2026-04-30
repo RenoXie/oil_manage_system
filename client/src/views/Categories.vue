@@ -9,7 +9,9 @@
 
     <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="name" label="类别名称" width="200" />
-      <el-table-column prop="created_at" label="创建时间" width="200" />
+      <el-table-column prop="created_at" label="创建时间" width="200">
+        <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="150">
         <template #default="{ row }">
           <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
@@ -36,6 +38,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../api/categories'
+import { formatDate } from '../utils/date'
 
 const list = ref([])
 const loading = ref(false)

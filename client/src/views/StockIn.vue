@@ -3,7 +3,10 @@
     <template #header>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span>入库管理</span>
-        <el-button type="primary" @click="openDialog()">新增入库</el-button>
+        <div>
+          <el-button @click="handleExport">导出Excel</el-button>
+          <el-button type="primary" @click="openDialog()">新增入库</el-button>
+        </div>
       </div>
     </template>
 
@@ -28,7 +31,12 @@
     </el-form>
 
     <el-table :data="list" stripe v-loading="loading">
-      <el-table-column prop="stock_date" label="入库日期" width="120" />
+      <el-table-column prop="stock_date" label="入库日期" width="120">
+        <template #default="{ row }">{{ formatDate(row.stock_date) }}</template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="操作时间" width="160">
+        <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
+      </el-table-column>
       <el-table-column prop="plate_number" label="车牌号" width="120" />
       <el-table-column prop="category_name" label="油品类别" width="100" />
       <el-table-column prop="liters" label="数量(L)" width="100">
@@ -87,9 +95,12 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getStockInList, createStockIn, updateStockIn } from '../api/stockIn'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
+import { formatDate } from '../utils/date'
+import { exportToExcel } from '../utils/export'
 
 const list = ref([])
 const total = ref(0)
@@ -167,6 +178,38 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+async function fetchAllForExport() {
+  const params = {}
+  if (dateRange.value?.length === 2) {
+    params.start_date = dateRange.value[0]
+    params.end_date = dateRange.value[1]
+  }
+  if (filter.vehicle_id) params.vehicle_id = filter.vehicle_id
+  if (filter.category_id) params.category_id = filter.category_id
+  params.page = 1
+  params.page_size = 10000
+  const res = await getStockInList(params)
+  return res.data.list
+}
+
+async function handleExport() {
+  try {
+    const data = await fetchAllForExport()
+    if (!data.length) { ElMessage.warning('没有数据可导出'); return }
+    exportToExcel([
+      { label: '入库日期', key: 'stock_date', width: 15 },
+      { label: '车牌号', key: 'plate_number', width: 15 },
+      { label: '油品类别', key: 'category_name', width: 12 },
+      { label: '数量(L)', key: 'liters', width: 12 },
+      { label: '单价(元/L)', key: 'price_per_liter', width: 12 },
+      { label: '总金额(元)', key: 'total_amount', width: 12 },
+      { label: '操作人', key: 'operator_name', width: 12 },
+      { label: '备注', key: 'remark', width: 20 },
+    ], data, '入库记录')
+    ElMessage.success('导出成功')
+  } catch { ElMessage.error('导出失败') }
 }
 
 onMounted(async () => {

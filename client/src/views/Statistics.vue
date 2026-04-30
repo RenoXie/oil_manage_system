@@ -6,6 +6,9 @@
           <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
             start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" @change="fetchAll" />
         </el-form-item>
+        <el-form-item>
+          <el-button @click="exportOverview">导出概览</el-button>
+        </el-form-item>
       </el-form>
 
       <el-row :gutter="20" style="margin-bottom:20px">
@@ -66,7 +69,12 @@
     </el-card>
 
     <el-card>
-      <template #header>购买人统计排行</template>
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>购买人统计排行</span>
+          <el-button size="small" @click="exportBuyers">导出排行</el-button>
+        </div>
+      </template>
       <el-table :data="buyers.list" stripe>
         <el-table-column prop="buyer_name" label="购买人/单位" width="200" />
         <el-table-column prop="total_liters" label="购买总量(L)" sortable>
@@ -94,7 +102,9 @@
         &nbsp; 合计 {{ buyerDetail.summary.total_liters.toFixed(2) }} L / ¥{{ buyerDetail.summary.total_amount.toFixed(2) }} / {{ buyerDetail.summary.times }} 次
       </div>
       <el-table :data="buyerDetail.records" stripe size="small">
-        <el-table-column prop="purchase_date" label="日期" width="120" />
+        <el-table-column prop="purchase_date" label="日期" width="120">
+          <template #default="{ row }">{{ formatDate(row.purchase_date) }}</template>
+        </el-table-column>
         <el-table-column prop="category_name" label="油品" width="100" />
         <el-table-column prop="plate_number" label="车辆" width="120" />
         <el-table-column prop="liters" label="数量(L)">
@@ -111,7 +121,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getOverview, getBuyer, getBuyers } from '../api/statistics'
+import { formatDate } from '../utils/date'
+import * as XLSX from 'xlsx'
+import { exportToExcel } from '../utils/export'
 
 const dateRange = ref([])
 const overview = ref({
@@ -153,6 +167,35 @@ async function showBuyerDetail(buyer) {
   buyerDetail.summary = res.data.summary
   buyerDetail.records = res.data.records
   buyerDialog.value = true
+}
+
+function exportOverview() {
+  const si = overview.value.stock_in
+  const so = overview.value.stock_out
+  const data = [
+    { '类别': '入库', '总量(L)': si.total_liters.toFixed(2), '总金额(元)': si.total_amount.toFixed(2), '记录数': si.record_count },
+    { '类别': '出库', '总量(L)': so.total_liters.toFixed(2), '总金额(元)': so.total_amount.toFixed(2), '记录数': so.record_count },
+  ]
+  const catData = []
+  si.by_category.forEach((c) => catData.push({ '类别': `入库-${c.name}`, '总量(L)': (+c.liters).toFixed(2), '总金额(元)': (+c.amount).toFixed(2), '记录数': '' }))
+  so.by_category.forEach((c) => catData.push({ '类别': `出库-${c.name}`, '总量(L)': (+c.liters).toFixed(2), '总金额(元)': (+c.amount).toFixed(2), '记录数': '' }))
+  const all = [...data, {}, ...catData]
+  const sheet = XLSX.utils.json_to_sheet(all)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, sheet, '概览')
+  XLSX.writeFile(wb, '统计概览.xlsx')
+  ElMessage.success('导出成功')
+}
+
+function exportBuyers() {
+  if (!buyers.list.length) { ElMessage.warning('没有数据可导出'); return }
+  exportToExcel([
+    { label: '购买人', key: 'buyer_name', width: 20 },
+    { label: '购买总量(L)', key: 'total_liters', width: 15 },
+    { label: '购买金额(元)', key: 'total_amount', width: 15 },
+    { label: '购买次数', key: 'times', width: 12 },
+  ], buyers.list, '购买人排行')
+  ElMessage.success('导出成功')
 }
 
 onMounted(fetchAll)

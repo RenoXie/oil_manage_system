@@ -15,7 +15,9 @@
           <el-tag :type="row.role==='admin'?'danger':'info'">{{ row.role==='admin'?'管理员':'操作员' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" width="180" />
+      <el-table-column prop="created_at" label="创建时间" width="180">
+        <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="150">
         <template #default="{ row }">
           <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
@@ -55,6 +57,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { getUsers, createUser, updateUser, deleteUser } from '../api/users'
+import { formatDate } from '../utils/date'
 
 const userStore = useUserStore()
 const list = ref([])
