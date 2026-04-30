@@ -1,0 +1,48 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const db = require('../config/db');
+const { auth, adminOnly } = require('../middleware/auth');
+
+const router = express.Router();
+
+router.use(auth);
+
+router.get('/', adminOnly, async (req, res) => {
+  const users = await db('users').select('id', 'username', 'real_name', 'role', 'created_at');
+  res.json({ code: 0, data: users });
+});
+
+router.post('/', adminOnly, async (req, res) => {
+  const { username, password, real_name, role } = req.body;
+  if (!username || !password || !real_name) {
+    return res.status(400).json({ code: 400, msg: '请填写完整信息' });
+  }
+  const exists = await db('users').where({ username }).first();
+  if (exists) {
+    return res.status(400).json({ code: 400, msg: '用户名已存在' });
+  }
+  const hashed = await bcrypt.hash(password, 10);
+  const [id] = await db('users').insert({ username, password: hashed, real_name, role: role || 'operator' });
+  res.json({ code: 0, data: { id } });
+});
+
+router.put('/:id', adminOnly, async (req, res) => {
+  const { real_name, role, password } = req.body;
+  const update = {};
+  if (real_name) update.real_name = real_name;
+  if (role) update.role = role;
+  if (password) update.password = await bcrypt.hash(password, 10);
+  update.updated_at = db.fn.now();
+  await db('users').where({ id: req.params.id }).update(update);
+  res.json({ code: 0, msg: '更新成功' });
+});
+
+router.delete('/:id', adminOnly, async (req, res) => {
+  if (+req.params.id === req.user.id) {
+    return res.status(400).json({ code: 400, msg: '不能删除自己' });
+  }
+  await db('users').where({ id: req.params.id }).del();
+  res.json({ code: 0, msg: '删除成功' });
+});
+
+module.exports = router;
