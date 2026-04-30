@@ -100,7 +100,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getStockInList, createStockIn, updateStockIn, deleteStockIn } from '../api/stockIn'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
-import { formatDate } from '../utils/date'
+import { formatDate, getCurrentMonthRange } from '../utils/date'
 import { exportToExcel } from '../utils/export'
 
 const list = ref([])
@@ -108,7 +108,7 @@ const total = ref(0)
 const loading = ref(false)
 const vehicles = ref([])
 const categories = ref([])
-const dateRange = ref([])
+const dateRange = ref(getCurrentMonthRange())
 const filter = reactive({ vehicle_id: '', category_id: '', page: 1, page_size: 20 })
 
 const dialogVisible = ref(false)

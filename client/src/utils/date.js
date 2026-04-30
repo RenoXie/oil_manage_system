@@ -1,3 +1,11 @@
+export function getCurrentMonthRange() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const lastDay = String(new Date(y, now.getMonth() + 1, 0).getDate()).padStart(2, '0')
+  return [`${y}-${m}-01`, `${y}-${m}-${lastDay}`]
+}
+
 export function formatDate(val, showTime = false) {
   if (!val) return ''
   const d = new Date(val)

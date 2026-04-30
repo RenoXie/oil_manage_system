@@ -140,7 +140,7 @@ import { getStockOutList, createStockOut, updateStockOut, deleteStockOut } from 
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
 import { getCustomers, createCustomer } from '../api/customers'
-import { formatDate } from '../utils/date'
+import { formatDate, getCurrentMonthRange } from '../utils/date'
 import { exportToExcel } from '../utils/export'
 
 const list = ref([])
@@ -149,7 +149,7 @@ const loading = ref(false)
 const vehicles = ref([])
 const categories = ref([])
 const customers = ref([])
-const dateRange = ref([])
+const dateRange = ref(getCurrentMonthRange())
 const customerFilter = ref('')
 const dialogCustomerFilter = ref('')
 const filter = reactive({ customer_id: '', vehicle_id: '', page: 1, page_size: 20 })

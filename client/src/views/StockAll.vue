@@ -91,7 +91,7 @@ import { ElMessage } from 'element-plus'
 import { getStockAllList } from '../api/stockAll'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
-import { formatDate } from '../utils/date'
+import { formatDate, getCurrentMonthRange } from '../utils/date'
 import { exportToExcel } from '../utils/export'
 
 const list = ref([])
@@ -99,7 +99,7 @@ const total = ref(0)
 const loading = ref(false)
 const vehicles = ref([])
 const categories = ref([])
-const dateRange = ref([])
+const dateRange = ref(getCurrentMonthRange())
 const summary = reactive({
   total_in_liters: 0,
   total_in_amount: 0,

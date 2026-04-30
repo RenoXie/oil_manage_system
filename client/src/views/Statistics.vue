@@ -123,11 +123,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getOverview, getBuyer, getBuyers } from '../api/statistics'
-import { formatDate } from '../utils/date'
+import { formatDate, getCurrentMonthRange } from '../utils/date'
 import * as XLSX from 'xlsx'
 import { exportToExcel } from '../utils/export'
 
-const dateRange = ref([])
+const dateRange = ref(getCurrentMonthRange())
 const overview = ref({
   stock_in: { total_liters: 0, total_amount: 0, record_count: 0, by_category: [] },
   stock_out: { total_liters: 0, total_amount: 0, record_count: 0, by_category: [] },

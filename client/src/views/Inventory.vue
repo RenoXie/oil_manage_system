@@ -81,11 +81,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getInventory, getVehicleDetail } from '../api/inventory'
-import { formatDate } from '../utils/date'
+import { formatDate, getCurrentMonthRange } from '../utils/date'
 
 const inventory = ref([])
 const loading = ref(false)
-const detailDate = ref([])
+const detailDate = ref(getCurrentMonthRange())
 const detail = reactive({
   vehicle: null,
   records: [],
