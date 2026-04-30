@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
+const { auditLog } = require('../middleware/auditLog');
 
 const router = express.Router();
 router.use(auth);
@@ -54,6 +55,7 @@ router.post('/', async (req, res) => {
     remark: remark || '',
   });
   res.json({ code: 0, data: { id } });
+  auditLog('stock_out', id, 'create', req.user.id, null, { oil_category_id, vehicle_id, buyer_name, unit_price, liters, total_amount, purchase_date, remark });
 });
 
 router.get('/:id', async (req, res) => {
@@ -75,30 +77,37 @@ router.get('/:id', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
+  const oldRecord = await db('stock_out').where({ id: req.params.id, deletestatus: 0 }).first();
+  if (!oldRecord) return res.status(404).json({ code: 404, msg: '记录不存在' });
+
   const { oil_category_id, vehicle_id, buyer_name, unit_price, liters, purchase_date, remark } = req.body;
   const update = { operator_id: req.user.id };
-  if (oil_category_id) update.oil_category_id = oil_category_id;
-  if (vehicle_id) update.vehicle_id = vehicle_id;
-  if (buyer_name) update.buyer_name = buyer_name;
-  if (unit_price) update.unit_price = unit_price;
-  if (liters) update.liters = liters;
-  if (purchase_date) update.purchase_date = purchase_date;
+  if (oil_category_id !== undefined) update.oil_category_id = oil_category_id;
+  if (vehicle_id !== undefined) update.vehicle_id = vehicle_id;
+  if (buyer_name !== undefined) update.buyer_name = buyer_name;
+  if (unit_price !== undefined) update.unit_price = unit_price;
+  if (liters !== undefined) update.liters = liters;
+  if (purchase_date !== undefined) update.purchase_date = purchase_date;
   if (remark !== undefined) update.remark = remark;
   if (unit_price && liters) {
     update.total_amount = +(unit_price * liters).toFixed(2);
   } else if (unit_price || liters) {
-    const current = await db('stock_out').where({ id: req.params.id, deletestatus: 0 }).first();
-    const p = unit_price || current.unit_price;
-    const l = liters || current.liters;
+    const p = unit_price || oldRecord.unit_price;
+    const l = liters || oldRecord.liters;
     update.total_amount = +(p * l).toFixed(2);
   }
-  await db('stock_out').where({ id: req.params.id, deletestatus: 0 }).update(update);
+  await db('stock_out').where({ id: req.params.id }).update(update);
   res.json({ code: 0, msg: '更新成功' });
+  const newRecord = { ...oldRecord, ...update };
+  auditLog('stock_out', req.params.id, 'update', req.user.id, oldRecord, newRecord);
 });
 
 router.delete('/:id', async (req, res) => {
+  const oldRecord = await db('stock_out').where({ id: req.params.id }).first();
+  if (!oldRecord) return res.status(404).json({ code: 404, msg: '记录不存在' });
   await db('stock_out').where({ id: req.params.id }).update({ deletestatus: 1 });
   res.json({ code: 0, msg: '删除成功' });
+  auditLog('stock_out', req.params.id, 'delete', req.user.id, oldRecord, null);
 });
 
 module.exports = router;

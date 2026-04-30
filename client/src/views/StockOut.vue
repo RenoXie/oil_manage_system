@@ -50,6 +50,7 @@
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
+          <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -97,8 +98,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getStockOutList, createStockOut, updateStockOut } from '../api/stockOut'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getStockOutList, createStockOut, updateStockOut, deleteStockOut } from '../api/stockOut'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
 import { formatDate } from '../utils/date'
@@ -194,6 +195,15 @@ async function fetchAllForExport() {
   if (filter.vehicle_id) params.vehicle_id = filter.vehicle_id
   const res = await getStockOutList(params)
   return res.data.list
+}
+
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定删除该出库记录吗？', '提示', { type: 'warning' })
+    await deleteStockOut(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* 取消 */ }
 }
 
 async function handleExport() {

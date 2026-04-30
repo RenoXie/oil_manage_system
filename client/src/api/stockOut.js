@@ -15,3 +15,7 @@ export function getStockOutDetail(id) {
 export function updateStockOut(id, data) {
   return request.put(`/stock-out/${id}`, data)
 }
+
+export function deleteStockOut(id) {
+  return request.delete(`/stock-out/${id}`)
+}
