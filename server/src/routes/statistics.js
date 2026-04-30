@@ -7,7 +7,6 @@ const router = express.Router();
 router.use(auth);
 router.use(validateDateRange);
 
-// 总进出库概览统计
 router.get('/overview', async (req, res) => {
   const { start_date, end_date } = req.query;
   const dateFilter = (qb) => {
@@ -34,7 +33,6 @@ router.get('/overview', async (req, res) => {
     .count('* as record_count')
     .first();
 
-  // 按油品分类统计
   const inByCategory = await db('stock_in')
     .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
     .where('stock_in.deletestatus', 0)
@@ -75,15 +73,17 @@ router.get('/overview', async (req, res) => {
   });
 });
 
-// 某购买人在时间段内的购买汇总
 router.get('/buyer', async (req, res) => {
-  const { start_date, end_date, buyer } = req.query;
-  if (!buyer) return res.status(400).json({ code: 400, msg: '请提供购买人名称' });
+  const { start_date, end_date, customer_id } = req.query;
+  if (!customer_id) return res.status(400).json({ code: 400, msg: '请提供客户ID' });
+
+  const customer = await db('customers').where({ id: customer_id, deletestatus: 0 }).first();
+  if (!customer) return res.status(404).json({ code: 404, msg: '客户不存在' });
 
   const query = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
     .join('vehicles', 'stock_out.vehicle_id', 'vehicles.id')
-    .where('stock_out.buyer_name', buyer)
+    .where('stock_out.customer_id', customer_id)
     .where('stock_out.deletestatus', 0);
 
   if (start_date) query.where('stock_out.purchase_date', '>=', start_date);
@@ -98,7 +98,7 @@ router.get('/buyer', async (req, res) => {
     .orderBy('stock_out.purchase_date', 'desc');
 
   const summary = await db('stock_out')
-    .where({ buyer_name: buyer, deletestatus: 0 })
+    .where({ customer_id, deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
@@ -111,7 +111,7 @@ router.get('/buyer', async (req, res) => {
   res.json({
     code: 0,
     data: {
-      buyer,
+      buyer: customer.name,
       summary: {
         total_liters: +summary.total_liters || 0,
         total_amount: +summary.total_amount || 0,
@@ -122,21 +122,21 @@ router.get('/buyer', async (req, res) => {
   });
 });
 
-// 所有购买人分单位统计排行
 router.get('/buyers', async (req, res) => {
   const { start_date, end_date } = req.query;
 
   const query = db('stock_out')
-    .where({ deletestatus: 0 })
-    .select('buyer_name')
-    .sum('liters as total_liters')
-    .sum('total_amount as total_amount')
+    .join('customers', 'stock_out.customer_id', 'customers.id')
+    .where('stock_out.deletestatus', 0)
+    .select('stock_out.customer_id', 'customers.name as buyer_name')
+    .sum('stock_out.liters as total_liters')
+    .sum('stock_out.total_amount as total_amount')
     .count('* as times')
-    .groupBy('buyer_name')
+    .groupBy('stock_out.customer_id', 'customers.name')
     .orderBy('total_amount', 'desc');
 
-  if (start_date) query.where('purchase_date', '>=', start_date);
-  if (end_date) query.where('purchase_date', '<=', end_date);
+  if (start_date) query.where('stock_out.purchase_date', '>=', start_date);
+  if (end_date) query.where('stock_out.purchase_date', '<=', end_date);
 
   const list = await query;
 

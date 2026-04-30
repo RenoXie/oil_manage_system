@@ -15,8 +15,11 @@
         <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
           start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" />
       </el-form-item>
-      <el-form-item label="购买人">
-        <el-input v-model="filter.buyer" placeholder="输入购买人" clearable style="width:150px" />
+      <el-form-item label="客户">
+        <el-select v-model="filter.customer_id" placeholder="全部" clearable filterable style="width:180px"
+          :filter-method="(val) => customerFilter = val">
+          <el-option v-for="c in filteredCustomers" :key="c.id" :label="c.name" :value="c.id" />
+        </el-select>
       </el-form-item>
       <el-form-item label="车辆">
         <el-select v-model="filter.vehicle_id" placeholder="全部" clearable style="width:150px">
@@ -35,7 +38,7 @@
       <el-table-column prop="created_at" label="操作时间" width="160">
         <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
       </el-table-column>
-      <el-table-column prop="buyer_name" label="购买人" width="120" />
+      <el-table-column prop="customer_name" label="客户" width="150" />
       <el-table-column prop="plate_number" label="出油车辆" width="120" />
       <el-table-column prop="category_name" label="油品类别" width="100" />
       <el-table-column prop="liters" label="数量(L)" width="100">
@@ -65,8 +68,20 @@
         <el-form-item label="购买日期" prop="purchase_date">
           <el-date-picker v-model="form.purchase_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
-        <el-form-item label="购买人" prop="buyer_name">
-          <el-input v-model="form.buyer_name" placeholder="输入购买人/单位名称" />
+        <el-form-item label="客户" prop="customer_id">
+          <el-select v-model="form.customer_id" style="width:100%" filterable
+            :filter-method="(val) => dialogCustomerFilter = val"
+            placeholder="搜索或选择客户">
+            <el-option v-for="c in dialogFilteredCustomers" :key="c.id" :label="c.name" :value="c.id" />
+            <template #empty>
+              <div style="padding:8px;text-align:center">
+                <span style="color:#909399">无匹配客户</span>
+                <el-button text type="primary" size="small" style="margin-left:8px" @click="openCustomerCreate">
+                  新建客户
+                </el-button>
+              </div>
+            </template>
+          </el-select>
         </el-form-item>
         <el-form-item label="出油车辆" prop="vehicle_id">
           <el-select v-model="form.vehicle_id" style="width:100%">
@@ -93,15 +108,38 @@
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 快速新建客户弹窗 -->
+    <el-dialog v-model="customerDialogVisible" title="新建客户" width="400px">
+      <el-form ref="customerFormRef" :model="customerForm" :rules="customerRules" label-width="90px">
+        <el-form-item label="客户名称" prop="name">
+          <el-input v-model="customerForm.name" placeholder="必填" />
+        </el-form-item>
+        <el-form-item label="电话">
+          <el-input v-model="customerForm.phone" placeholder="选填" />
+        </el-form-item>
+        <el-form-item label="开户银行">
+          <el-input v-model="customerForm.bank_name" placeholder="选填" />
+        </el-form-item>
+        <el-form-item label="银行账号">
+          <el-input v-model="customerForm.bank_account" placeholder="选填" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="customerDialogVisible=false">取消</el-button>
+        <el-button type="primary" :loading="creatingCustomer" @click="handleCustomerCreate">保存</el-button>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getStockOutList, createStockOut, updateStockOut, deleteStockOut } from '../api/stockOut'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
+import { getCustomers, createCustomer } from '../api/customers'
 import { formatDate } from '../utils/date'
 import { exportToExcel } from '../utils/export'
 
@@ -110,43 +148,75 @@ const total = ref(0)
 const loading = ref(false)
 const vehicles = ref([])
 const categories = ref([])
+const customers = ref([])
 const dateRange = ref([])
-const filter = reactive({ buyer: '', vehicle_id: '', page: 1, page_size: 20 })
+const customerFilter = ref('')
+const dialogCustomerFilter = ref('')
+const filter = reactive({ customer_id: '', vehicle_id: '', page: 1, page_size: 20 })
+
+const filteredCustomers = computed(() => {
+  if (!customerFilter.value) return customers.value
+  const kw = customerFilter.value.toLowerCase()
+  return customers.value.filter((c) => c.name.toLowerCase().includes(kw))
+})
+
+const dialogFilteredCustomers = computed(() => {
+  if (!dialogCustomerFilter.value) return customers.value
+  const kw = dialogCustomerFilter.value.toLowerCase()
+  return customers.value.filter((c) => c.name.toLowerCase().includes(kw))
+})
 
 const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
 const form = reactive({
-  purchase_date: '', buyer_name: '', vehicle_id: '', oil_category_id: '',
+  purchase_date: '', customer_id: '', vehicle_id: '', oil_category_id: '',
   unit_price: 0, liters: 0, remark: '',
 })
 const rules = {
   purchase_date: [{ required: true, message: '请选择日期' }],
-  buyer_name: [{ required: true, message: '请输入购买人' }],
+  customer_id: [{ required: true, message: '请选择客户' }],
   vehicle_id: [{ required: true, message: '请选择车辆' }],
   oil_category_id: [{ required: true, message: '请选择油品' }],
   unit_price: [{ required: true, message: '请输入单价' }],
   liters: [{ required: true, message: '请输入数量' }],
 }
 
+const customerDialogVisible = ref(false)
+const creatingCustomer = ref(false)
+const customerFormRef = ref(null)
+const customerForm = reactive({ name: '', phone: '', bank_name: '', bank_account: '' })
+const customerRules = {
+  name: [{ required: true, message: '请输入客户名称' }],
+}
+
+async function loadCustomers() {
+  try {
+    const res = await getCustomers()
+    customers.value = res.data
+  } catch { /* ignore */ }
+}
+
 function resetForm() {
   editId.value = null
-  Object.assign(form, { purchase_date: '', buyer_name: '', vehicle_id: '', oil_category_id: '', unit_price: 0, liters: 0, remark: '' })
+  dialogCustomerFilter.value = ''
+  Object.assign(form, { purchase_date: '', customer_id: '', vehicle_id: '', oil_category_id: '', unit_price: 0, liters: 0, remark: '' })
   formRef.value?.resetFields()
 }
 
 async function openDialog(row) {
+  if (!customers.value.length) await loadCustomers()
   if (row) {
     editId.value = row.id
     Object.assign(form, {
       purchase_date: row.purchase_date,
-      buyer_name: row.buyer_name,
+      customer_id: row.customer_id,
       vehicle_id: row.vehicle_id,
       oil_category_id: row.oil_category_id,
       unit_price: +row.unit_price,
       liters: +row.liters,
-      remark: row.remark,
+      remark: row.remark || '',
     })
   }
   dialogVisible.value = true
@@ -191,7 +261,7 @@ async function fetchAllForExport() {
     params.start_date = dateRange.value[0]
     params.end_date = dateRange.value[1]
   }
-  if (filter.buyer) params.buyer = filter.buyer
+  if (filter.customer_id) params.customer_id = filter.customer_id
   if (filter.vehicle_id) params.vehicle_id = filter.vehicle_id
   const res = await getStockOutList(params)
   return res.data.list
@@ -212,7 +282,7 @@ async function handleExport() {
     if (!data.length) { ElMessage.warning('没有数据可导出'); return }
     exportToExcel([
       { label: '购买日期', key: 'purchase_date', width: 15 },
-      { label: '购买人', key: 'buyer_name', width: 15 },
+      { label: '客户', key: 'customer_name', width: 15 },
       { label: '出油车辆', key: 'plate_number', width: 15 },
       { label: '油品类别', key: 'category_name', width: 12 },
       { label: '数量(L)', key: 'liters', width: 12 },
@@ -225,10 +295,33 @@ async function handleExport() {
   } catch { ElMessage.error('导出失败') }
 }
 
+function openCustomerCreate() {
+  Object.assign(customerForm, { name: dialogCustomerFilter.value || '', phone: '', bank_name: '', bank_account: '' })
+  customerDialogVisible.value = true
+}
+
+async function handleCustomerCreate() {
+  const valid = await customerFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  creatingCustomer.value = true
+  try {
+    const res = await createCustomer(customerForm)
+    ElMessage.success('客户创建成功')
+    customerDialogVisible.value = false
+    await loadCustomers()
+    form.customer_id = res.data.id
+  } catch (err) {
+    ElMessage.error(err.response?.data?.msg || '创建失败')
+  } finally {
+    creatingCustomer.value = false
+  }
+}
+
 onMounted(async () => {
-  const [v, c] = await Promise.all([getVehicles(), getCategories()])
+  const [v, c, cu] = await Promise.all([getVehicles(), getCategories(), getCustomers()])
   vehicles.value = v.data
   categories.value = c.data
+  customers.value = cu.data
   fetchData()
 })
 </script>

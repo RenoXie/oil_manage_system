@@ -9,22 +9,24 @@ router.use(auth);
 router.use(validateDateRange);
 
 router.get('/', async (req, res) => {
-  const { start_date, end_date, buyer, vehicle_id, page = 1, page_size = 20 } = req.query;
+  const { start_date, end_date, customer_id, vehicle_id, page = 1, page_size = 20 } = req.query;
   let query = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
     .join('vehicles', 'stock_out.vehicle_id', 'vehicles.id')
     .join('users', 'stock_out.operator_id', 'users.id')
+    .join('customers', 'stock_out.customer_id', 'customers.id')
     .select(
       'stock_out.*',
       'oil_categories.name as category_name',
       'vehicles.plate_number',
-      'users.real_name as operator_name'
+      'users.real_name as operator_name',
+      'customers.name as customer_name'
     )
     .where('stock_out.deletestatus', 0);
 
   if (start_date) query = query.where('stock_out.purchase_date', '>=', start_date);
   if (end_date) query = query.where('stock_out.purchase_date', '<=', end_date);
-  if (buyer) query = query.where('stock_out.buyer_name', 'like', `%${buyer}%`);
+  if (customer_id) query = query.where('stock_out.customer_id', customer_id);
   if (vehicle_id) query = query.where('stock_out.vehicle_id', vehicle_id);
 
   const total = await query.clone().count('* as count').first();
@@ -38,15 +40,15 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { oil_category_id, vehicle_id, buyer_name, unit_price, liters, purchase_date, remark } = req.body;
-  if (!oil_category_id || !vehicle_id || !buyer_name || !unit_price || !liters || !purchase_date) {
+  const { oil_category_id, vehicle_id, customer_id, unit_price, liters, purchase_date, remark } = req.body;
+  if (!oil_category_id || !vehicle_id || !customer_id || !unit_price || !liters || !purchase_date) {
     return res.status(400).json({ code: 400, msg: '请填写完整的出库信息' });
   }
   const total_amount = +(unit_price * liters).toFixed(2);
   const [id] = await db('stock_out').insert({
     oil_category_id,
     vehicle_id,
-    buyer_name,
+    customer_id,
     unit_price,
     liters,
     total_amount,
@@ -55,7 +57,7 @@ router.post('/', async (req, res) => {
     remark: remark || '',
   });
   res.json({ code: 0, data: { id } });
-  auditLog('stock_out', id, 'create', req.user.id, null, { oil_category_id, vehicle_id, buyer_name, unit_price, liters, total_amount, purchase_date, remark });
+  auditLog('stock_out', id, 'create', req.user.id, null, { oil_category_id, vehicle_id, customer_id, unit_price, liters, total_amount, purchase_date, remark });
 });
 
 router.get('/:id', async (req, res) => {
@@ -63,11 +65,13 @@ router.get('/:id', async (req, res) => {
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
     .join('vehicles', 'stock_out.vehicle_id', 'vehicles.id')
     .join('users', 'stock_out.operator_id', 'users.id')
+    .join('customers', 'stock_out.customer_id', 'customers.id')
     .select(
       'stock_out.*',
       'oil_categories.name as category_name',
       'vehicles.plate_number',
-      'users.real_name as operator_name'
+      'users.real_name as operator_name',
+      'customers.name as customer_name'
     )
     .where('stock_out.id', req.params.id)
     .where('stock_out.deletestatus', 0)
@@ -80,11 +84,11 @@ router.put('/:id', async (req, res) => {
   const oldRecord = await db('stock_out').where({ id: req.params.id, deletestatus: 0 }).first();
   if (!oldRecord) return res.status(404).json({ code: 404, msg: '记录不存在' });
 
-  const { oil_category_id, vehicle_id, buyer_name, unit_price, liters, purchase_date, remark } = req.body;
+  const { oil_category_id, vehicle_id, customer_id, unit_price, liters, purchase_date, remark } = req.body;
   const update = { operator_id: req.user.id };
   if (oil_category_id !== undefined) update.oil_category_id = oil_category_id;
   if (vehicle_id !== undefined) update.vehicle_id = vehicle_id;
-  if (buyer_name !== undefined) update.buyer_name = buyer_name;
+  if (customer_id !== undefined) update.customer_id = customer_id;
   if (unit_price !== undefined) update.unit_price = unit_price;
   if (liters !== undefined) update.liters = liters;
   if (purchase_date !== undefined) update.purchase_date = purchase_date;

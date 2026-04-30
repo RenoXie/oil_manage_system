@@ -24,6 +24,10 @@
           <el-icon><Upload /></el-icon>
           <span>出库管理</span>
         </el-menu-item>
+        <el-menu-item index="/stock-all">
+          <el-icon><List /></el-icon>
+          <span>进出明细</span>
+        </el-menu-item>
         <el-menu-item index="/inventory">
           <el-icon><Odometer /></el-icon>
           <span>车辆库存</span>
@@ -39,6 +43,10 @@
         <el-menu-item index="/categories">
           <el-icon><Collection /></el-icon>
           <span>油品类别</span>
+        </el-menu-item>
+        <el-menu-item index="/customers">
+          <el-icon><User /></el-icon>
+          <span>客户管理</span>
         </el-menu-item>
         <el-menu-item v-if="userStore.user?.role==='admin'" index="/users">
           <el-icon><UserFilled /></el-icon>

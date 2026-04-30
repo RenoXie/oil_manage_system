@@ -86,7 +86,7 @@
         <el-table-column prop="times" label="购买次数" sortable />
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
-            <el-button text type="primary" size="small" @click="showBuyerDetail(row.buyer_name)">查看明细</el-button>
+            <el-button text type="primary" size="small" @click="showBuyerDetail(row.customer_id)">查看明细</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -156,8 +156,8 @@ async function fetchAll() {
   buyers.total = buyerRes.data.total
 }
 
-async function showBuyerDetail(buyer) {
-  const params = { buyer }
+async function showBuyerDetail(customer_id) {
+  const params = { customer_id }
   if (dateRange.value?.length === 2) {
     params.start_date = dateRange.value[0]
     params.end_date = dateRange.value[1]

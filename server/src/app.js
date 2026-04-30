@@ -6,8 +6,10 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const vehicleRoutes = require('./routes/vehicles');
 const categoryRoutes = require('./routes/categories');
+const customerRoutes = require('./routes/customers');
 const stockInRoutes = require('./routes/stockIn');
 const stockOutRoutes = require('./routes/stockOut');
+const stockAllRoutes = require('./routes/stockAll');
 const inventoryRoutes = require('./routes/inventory');
 const statisticsRoutes = require('./routes/statistics');
 
@@ -20,8 +22,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/customers', customerRoutes);
 app.use('/api/stock-in', stockInRoutes);
 app.use('/api/stock-out', stockOutRoutes);
+app.use('/api/stock-all', stockAllRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/statistics', statisticsRoutes);
 

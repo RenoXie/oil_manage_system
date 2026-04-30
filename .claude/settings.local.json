@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell($env:Path = \"D:\\\\dev\\\\Git\\\\bin;$env:Path\"; cd D:\\\\dmx\\\\oil_manager_system; git status)"
+    ]
+  }
+}
