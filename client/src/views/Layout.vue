@@ -2,7 +2,7 @@
   <el-container style="height:100vh">
     <el-aside width="220px" style="background:#304156">
       <div class="logo">
-        <span>宁波慧和晟供应链管理</span>
+        <span>慧和晟<br/>油品进出库管理系统</span>
       </div>
       <el-menu
         :default-active="$route.path"
@@ -142,16 +142,18 @@ async function handleLogout() {
 
 <style>
 .logo {
-  height: 60px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 8px;
 }
 .logo span {
   color: #fff;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
-  letter-spacing: 0;
+  line-height: 1.6;
+  text-align: center;
 }
 .el-main {
   padding: 20px;
