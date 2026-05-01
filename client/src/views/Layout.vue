@@ -24,7 +24,8 @@
           <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
           <el-breadcrumb-item v-if="$route.meta.title">{{ $route.meta.title }}</el-breadcrumb-item>
         </el-breadcrumb>
-        <div>
+        <div style="display:flex;align-items:center">
+          <el-button v-if="userStore.user?.role==='customer'" text type="primary" style="margin-right:12px" @click="openProfile">个人信息</el-button>
           <span style="margin-right:12px;color:#606266">{{ userStore.user?.real_name }}</span>
           <el-button text type="danger" @click="handleLogout">退出</el-button>
         </div>
@@ -34,12 +35,34 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog v-model="profileVisible" title="个人信息" width="450px">
+    <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" label-width="80px">
+      <el-form-item label="客户名称" prop="name">
+        <el-input v-model="profileForm.name" />
+      </el-form-item>
+      <el-form-item label="手机号" prop="phone">
+        <el-input v-model="profileForm.phone" />
+      </el-form-item>
+      <el-form-item label="开户行">
+        <el-input v-model="profileForm.bank_name" />
+      </el-form-item>
+      <el-form-item label="银行账号">
+        <el-input v-model="profileForm.bank_account" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="profileVisible = false">取消</el-button>
+      <el-button type="primary" :loading="profileSaving" @click="saveProfile">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { getCustomers, updateCustomer } from '../api/customers'
 import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -57,6 +80,44 @@ const allMenuItems = [
   { key: 'customers',  path: '/customers',  label: '客户管理', icon: User },
   { key: 'users',      path: '/users',      label: '用户管理', icon: UserFilled },
 ]
+
+// customer profile dialog
+const profileVisible = ref(false)
+const profileSaving = ref(false)
+const profileFormRef = ref(null)
+const profileForm = reactive({ name: '', phone: '', bank_name: '', bank_account: '' })
+const profileRules = {
+  name: [{ required: true, message: '请输入客户名称' }],
+}
+
+async function openProfile() {
+  try {
+    const res = await getCustomers()
+    const c = res.data.find((x) => x.id === userStore.user.customer_id)
+    if (c) {
+      profileForm.name = c.name
+      profileForm.phone = c.phone || ''
+      profileForm.bank_name = c.bank_name || ''
+      profileForm.bank_account = c.bank_account || ''
+    }
+  } catch { /* ignore */ }
+  profileVisible.value = true
+}
+
+async function saveProfile() {
+  const valid = await profileFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  profileSaving.value = true
+  try {
+    await updateCustomer(userStore.user.customer_id, {
+      name: profileForm.name,
+      phone: profileForm.phone,
+      bank_name: profileForm.bank_name,
+      bank_account: profileForm.bank_account,
+    })
+    profileVisible.value = false
+  } finally { profileSaving.value = false }
+}
 
 function hasPermission(key) {
   const u = userStore.user

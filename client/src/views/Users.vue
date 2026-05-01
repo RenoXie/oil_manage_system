@@ -41,6 +41,13 @@
 
     <el-dialog v-model="dialogVisible" :title="editId ? '编辑用户' : '添加用户'" width="500px" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+        <!-- 客户关联：客户角色时显示，放在最前面 -->
+        <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id" :rules="[{ required: true, message: '请选择关联客户' }]">
+          <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户" @change="onCustomerChange">
+            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+          <div style="color:#909399;font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
+        </el-form-item>
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="usernameDisabled" />
           <div v-if="form.role==='customer' && !editId && selectedCustomer?.phone" style="color:#909399;font-size:12px;margin-top:2px">已自动填入客户手机号</div>
@@ -63,15 +70,7 @@
           <el-checkbox-group v-model="form.permissions">
             <el-checkbox v-for="p in permOptions" :key="p.key" :value="p.key" :label="p.key">{{ p.label }}</el-checkbox>
           </el-checkbox-group>
-        </el-form-item>
-        <!-- 客户关联：客户角色时显示 -->
-        <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id" :rules="[{ required: true, message: '请选择关联客户' }]">
-          <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户" @change="onCustomerChange">
-            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
-          </el-select>
-          <div style="color:#909399;font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
-        </el-form-item>
-      </el-form>
+        </el-form-item>      </el-form>
       <template #footer>
         <el-button @click="dialogVisible=false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
