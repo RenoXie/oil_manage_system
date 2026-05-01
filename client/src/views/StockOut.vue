@@ -5,7 +5,7 @@
         <span>出库管理</span>
         <div>
           <el-button @click="handleExport">导出Excel</el-button>
-          <el-button type="primary" @click="openDialog()">新增出库</el-button>
+          <el-button v-if="!isCustomer" type="primary" @click="openDialog()">新增出库</el-button>
         </div>
       </div>
     </template>
@@ -15,7 +15,7 @@
         <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
           start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" />
       </el-form-item>
-      <el-form-item label="客户">
+      <el-form-item v-if="!isCustomer" label="客户">
         <el-select v-model="filter.customer_id" placeholder="全部" clearable filterable style="width:180px"
           :filter-method="(val) => customerFilter = val">
           <el-option v-for="c in filteredCustomers" :key="c.id" :label="c.name" :value="c.id" />
@@ -70,7 +70,7 @@
       <el-table-column prop="total_amount" label="总金额(元)" width="120">
         <template #default="{ row }">{{ (+row.total_amount).toFixed(2) }}</template>
       </el-table-column>
-      <el-table-column prop="operator_name" label="操作人" width="100" />
+      <el-table-column v-if="!isCustomer" prop="operator_name" label="操作人" width="100" />
       <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
@@ -179,8 +179,12 @@ import { getStockOutList, createStockOut, updateStockOut, deleteStockOut } from 
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
 import { getCustomers, createCustomer } from '../api/customers'
+import { useUserStore } from '../stores/user'
 import { formatDate, getCurrentMonthRange } from '../utils/date'
 import { exportToExcel } from '../utils/export'
+
+const userStore = useUserStore()
+const isCustomer = computed(() => userStore.user?.role === 'customer')
 
 const list = ref([])
 const total = ref(0)
