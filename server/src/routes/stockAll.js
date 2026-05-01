@@ -9,6 +9,8 @@ router.use(validateDateRange);
 
 router.get('/', async (req, res) => {
   const { start_date, end_date, vehicle_id, category_id, page = 1, page_size = 20 } = req.query;
+  const isCustomer = req.user.role === 'customer';
+  const custId = req.user.customer_id;
 
   let inQuery = db('stock_in')
     .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
@@ -73,6 +75,9 @@ router.get('/', async (req, res) => {
     inQuery = inQuery.where('stock_in.oil_category_id', category_id);
     outQuery = outQuery.where('stock_out.oil_category_id', category_id);
   }
+  if (isCustomer) {
+    outQuery = outQuery.where('stock_out.customer_id', custId || 0);
+  }
 
   // summary queries
   const inSummary = db('stock_in')
@@ -96,6 +101,7 @@ router.get('/', async (req, res) => {
       if (end_date) qb.where('purchase_date', '<=', end_date);
       if (vehicle_id) qb.where('vehicle_id', vehicle_id);
       if (category_id) qb.where('oil_category_id', category_id);
+      if (isCustomer) qb.where('customer_id', custId || 0);
     })
     .select(
       db.raw('COALESCE(SUM(liters), 0) AS total_liters'),
@@ -127,6 +133,7 @@ router.get('/', async (req, res) => {
       if (end_date) qb.where('purchase_date', '<=', end_date);
       if (vehicle_id) qb.where('vehicle_id', vehicle_id);
       if (category_id) qb.where('oil_category_id', category_id);
+      if (isCustomer) qb.where('customer_id', custId || 0);
     })
     .select(
       'purchase_date as date',

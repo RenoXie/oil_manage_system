@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h1>油品进出库管理系统</h1>
+      <h1>宁波慧和晟供应链管理有限公司<br/>油品进出库管理系统</h1>
       <el-form ref="formRef" :model="form" :rules="rules" size="large">
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" prefix-icon="User" />
@@ -56,7 +56,7 @@ async function handleLogin() {
   background: #f0f2f5;
 }
 .login-card {
-  width: 380px;
+  width: 420px;
   padding: 40px;
   background: #fff;
   border-radius: 8px;
@@ -64,9 +64,10 @@ async function handleLogin() {
 }
 .login-card h1 {
   text-align: center;
-  font-size: 22px;
+  font-size: 16px;
   color: #303133;
   margin-bottom: 30px;
   font-weight: 600;
+  line-height: 1.6;
 }
 </style>

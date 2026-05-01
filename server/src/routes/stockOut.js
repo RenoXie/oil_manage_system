@@ -16,7 +16,13 @@ function applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }) {
 }
 
 router.get('/', async (req, res) => {
-  const { start_date, end_date, customer_id, vehicle_id, page = 1, page_size = 20 } = req.query;
+  let { start_date, end_date, customer_id, vehicle_id, page = 1, page_size = 20 } = req.query;
+
+  // customer 用户只能看自己的出库数据
+  if (req.user.role === 'customer') {
+    customer_id = req.user.customer_id;
+    if (!customer_id) return res.json({ code: 0, data: { list: [], total: 0, page: 1, page_size: 20, summary: { total_liters: 0, total_amount: 0, record_count: 0 }, daily_summary: [] } });
+  }
 
   let query = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')

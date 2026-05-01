@@ -2,7 +2,7 @@
   <el-container style="height:100vh">
     <el-aside width="220px" style="background:#304156">
       <div class="logo">
-        <span>油品管理系统</span>
+        <span>宁波慧和晟供应链管理</span>
       </div>
       <el-menu
         :default-active="$route.path"
@@ -12,45 +12,9 @@
         active-text-color="#409eff"
         style="border-right:none"
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>首页概览</span>
-        </el-menu-item>
-        <el-menu-item index="/stock-in">
-          <el-icon><Download /></el-icon>
-          <span>入库管理</span>
-        </el-menu-item>
-        <el-menu-item index="/stock-out">
-          <el-icon><Upload /></el-icon>
-          <span>出库管理</span>
-        </el-menu-item>
-        <el-menu-item index="/stock-all">
-          <el-icon><List /></el-icon>
-          <span>进出明细</span>
-        </el-menu-item>
-        <el-menu-item index="/inventory">
-          <el-icon><Odometer /></el-icon>
-          <span>车辆库存</span>
-        </el-menu-item>
-        <el-menu-item index="/statistics">
-          <el-icon><TrendCharts /></el-icon>
-          <span>统计报表</span>
-        </el-menu-item>
-        <el-menu-item index="/vehicles">
-          <el-icon><Van /></el-icon>
-          <span>车辆管理</span>
-        </el-menu-item>
-        <el-menu-item index="/categories">
-          <el-icon><Collection /></el-icon>
-          <span>油品类别</span>
-        </el-menu-item>
-        <el-menu-item index="/customers">
-          <el-icon><User /></el-icon>
-          <span>客户管理</span>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.user?.role==='admin'" index="/users">
-          <el-icon><UserFilled /></el-icon>
-          <span>用户管理</span>
+        <el-menu-item v-for="item in menuItems" :key="item.key" :index="item.path">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -73,11 +37,35 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const allMenuItems = [
+  { key: 'dashboard',  path: '/dashboard',  label: '首页概览', icon: DataAnalysis },
+  { key: 'stock-in',   path: '/stock-in',   label: '入库管理', icon: Download },
+  { key: 'stock-out',  path: '/stock-out',  label: '出库管理', icon: Upload },
+  { key: 'stock-all',  path: '/stock-all',  label: '进出明细', icon: List },
+  { key: 'inventory',  path: '/inventory',  label: '车辆库存', icon: Odometer },
+  { key: 'statistics', path: '/statistics', label: '统计报表', icon: TrendCharts },
+  { key: 'vehicles',   path: '/vehicles',   label: '车辆管理', icon: Van },
+  { key: 'categories', path: '/categories', label: '油品类别', icon: Collection },
+  { key: 'customers',  path: '/customers',  label: '客户管理', icon: User },
+  { key: 'users',      path: '/users',      label: '用户管理', icon: UserFilled },
+]
+
+function hasPermission(key) {
+  const u = userStore.user
+  if (!u) return false
+  if (u.role === 'admin') return true
+  return (u.permissions || []).includes(key)
+}
+
+const menuItems = computed(() => allMenuItems.filter((item) => hasPermission(item.key)))
 
 function handleLogout() {
   userStore.logout()

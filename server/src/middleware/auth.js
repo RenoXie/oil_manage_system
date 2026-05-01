@@ -22,4 +22,10 @@ function adminOnly(req, res, next) {
   next();
 }
 
-module.exports = { auth, adminOnly };
+function hasPermission(user, key) {
+  if (user.role === 'admin') return true;
+  const perms = user.permissions || [];
+  return perms.includes(key);
+}
+
+module.exports = { auth, adminOnly, hasPermission };

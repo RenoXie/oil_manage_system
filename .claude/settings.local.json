@@ -6,7 +6,9 @@
       "PowerShell($env:Path = \"D:\\\\dev\\\\Git\\\\bin;$env:Path\"; cd D:\\\\dmx\\\\oil_manager_system; git status)",
       "PowerShell(git push *)",
       "PowerShell(git *)",
-      "PowerShell(cmd /c \"git --version\")"
+      "PowerShell(cmd /c \"git --version\")",
+      "PowerShell(cmd /c \"git status\")",
+      "PowerShell(& \"D:\\\\dev\\\\Git\\\\bin\\\\git.exe\" status)"
     ]
   }
 }
