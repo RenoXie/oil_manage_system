@@ -41,7 +41,14 @@
 
     <el-dialog v-model="dialogVisible" :title="editId ? '编辑用户' : '添加用户'" width="500px" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
-        <!-- 客户关联：客户角色时显示，放在最前面 -->
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="form.role" style="width:100%" @change="onRoleChange">
+            <el-option label="管理员" value="admin" />
+            <el-option label="员工" value="employee" />
+            <el-option label="客户" value="customer" />
+          </el-select>
+        </el-form-item>
+        <!-- 客户关联：客户角色时显示 -->
         <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id" :rules="[{ required: true, message: '请选择关联客户' }]">
           <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户" @change="onCustomerChange">
             <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
@@ -54,13 +61,6 @@
         </el-form-item>
         <el-form-item label="姓名" prop="real_name">
           <el-input v-model="form.real_name" />
-        </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="form.role" style="width:100%" @change="onRoleChange">
-            <el-option label="管理员" value="admin" />
-            <el-option label="员工" value="employee" />
-            <el-option label="客户" value="customer" />
-          </el-select>
         </el-form-item>
         <el-form-item label="密码" :prop="editId ? '' : 'password'">
           <el-input v-model="form.password" :placeholder="editId ? '留空则不修改' : '请输入密码'" show-password />
