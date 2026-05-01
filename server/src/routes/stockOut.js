@@ -8,8 +8,16 @@ const router = express.Router();
 router.use(auth);
 router.use(validateDateRange);
 
+function applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }) {
+  if (start_date) qb.where('stock_out.purchase_date', '>=', start_date);
+  if (end_date) qb.where('stock_out.purchase_date', '<=', end_date);
+  if (customer_id) qb.where('stock_out.customer_id', customer_id);
+  if (vehicle_id) qb.where('stock_out.vehicle_id', vehicle_id);
+}
+
 router.get('/', async (req, res) => {
   const { start_date, end_date, customer_id, vehicle_id, page = 1, page_size = 20 } = req.query;
+
   let query = db('stock_out')
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
     .join('vehicles', 'stock_out.vehicle_id', 'vehicles.id')
@@ -24,19 +32,61 @@ router.get('/', async (req, res) => {
     )
     .where('stock_out.deletestatus', 0);
 
-  if (start_date) query = query.where('stock_out.purchase_date', '>=', start_date);
-  if (end_date) query = query.where('stock_out.purchase_date', '<=', end_date);
-  if (customer_id) query = query.where('stock_out.customer_id', customer_id);
-  if (vehicle_id) query = query.where('stock_out.vehicle_id', vehicle_id);
+  applyFilters(query, { start_date, end_date, customer_id, vehicle_id });
 
-  const total = await query.clone().count('* as count').first();
-  const list = await query
+  // 汇总查询
+  const summaryQuery = db('stock_out')
+    .where('stock_out.deletestatus', 0)
+    .modify((qb) => applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }))
+    .select(
+      db.raw('COALESCE(SUM(liters), 0) AS total_liters'),
+      db.raw('COALESCE(SUM(total_amount), 0) AS total_amount'),
+      db.raw('COUNT(*) AS record_count')
+    )
+    .first();
+
+  // 每日小结
+  const dailyQuery = db('stock_out')
+    .where('stock_out.deletestatus', 0)
+    .modify((qb) => applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }))
+    .select(
+      'purchase_date as date',
+      db.raw('COALESCE(SUM(liters), 0) AS liters'),
+      db.raw('COALESCE(SUM(total_amount), 0) AS amount'),
+      db.raw('COUNT(*) AS count')
+    )
+    .groupBy('purchase_date')
+    .orderBy('purchase_date', 'desc');
+
+  const listQuery = query
     .orderBy('stock_out.purchase_date', 'desc')
-    .orderBy('stock_out.id', 'desc')
-    .limit(+page_size)
-    .offset((+page - 1) * +page_size);
+    .orderBy('stock_out.id', 'desc');
+  if (+page_size > 0) {
+    listQuery.limit(+page_size).offset((+page - 1) * +page_size);
+  }
 
-  res.json({ code: 0, data: { list, total: total.count, page: +page, page_size: +page_size } });
+  const [total, list, summary, dailySummary] = await Promise.all([
+    query.clone().count('* as count').first(),
+    listQuery,
+    summaryQuery,
+    dailyQuery,
+  ]);
+
+  res.json({
+    code: 0,
+    data: {
+      list,
+      total: total.count,
+      page: +page,
+      page_size: +page_size,
+      summary: {
+        total_liters: +summary.total_liters,
+        total_amount: +summary.total_amount,
+        record_count: summary.record_count,
+      },
+      daily_summary: dailySummary,
+    },
+  });
 });
 
 router.post('/', async (req, res) => {

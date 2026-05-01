@@ -31,6 +31,28 @@
       </el-form-item>
     </el-form>
 
+    <!-- 汇总卡片 -->
+    <el-row :gutter="16" style="margin-bottom:16px">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div style="color:#909399;font-size:13px">总出库量(L)</div>
+          <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_liters.toFixed(2) }}</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div style="color:#909399;font-size:13px">总金额(元)</div>
+          <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_amount.toFixed(2) }}</div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div style="color:#909399;font-size:13px">记录数</div>
+          <div style="font-size:22px;font-weight:600">{{ summary.record_count }}</div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="purchase_date" label="购买日期" width="120">
         <template #default="{ row }">{{ formatDate(row.purchase_date) }}</template>
@@ -61,6 +83,23 @@
     <el-pagination style="margin-top:16px;justify-content:flex-end"
       v-model:current-page="filter.page" v-model:page-size="filter.page_size"
       :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next" @change="fetchData" />
+
+    <!-- 每日小结 -->
+    <el-card shadow="never" style="margin-top:16px" v-if="dailySummary.length">
+      <template #header>
+        <span style="font-weight:600">每日小结</span>
+      </template>
+      <el-table :data="dailySummary" stripe size="small">
+        <el-table-column prop="date" label="日期" width="140" />
+        <el-table-column prop="liters" label="出库量(L)" width="140">
+          <template #default="{ row }">{{ (+row.liters).toFixed(2) }}</template>
+        </el-table-column>
+        <el-table-column prop="amount" label="金额(元)" width="140">
+          <template #default="{ row }">{{ (+row.amount).toFixed(2) }}</template>
+        </el-table-column>
+        <el-table-column prop="count" label="笔数" width="100" />
+      </el-table>
+    </el-card>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="editId ? '编辑出库' : '新增出库'" width="500px" @closed="resetForm">
@@ -152,6 +191,8 @@ const customers = ref([])
 const dateRange = ref(getCurrentMonthRange())
 const customerFilter = ref('')
 const dialogCustomerFilter = ref('')
+const dailySummary = ref([])
+const summary = reactive({ total_liters: 0, total_amount: 0, record_count: 0 })
 const filter = reactive({ customer_id: '', vehicle_id: '', page: 1, page_size: 20 })
 
 const filteredCustomers = computed(() => {
@@ -250,13 +291,15 @@ async function fetchData() {
     const res = await getStockOutList(params)
     list.value = res.data.list
     total.value = res.data.total
+    Object.assign(summary, res.data.summary)
+    dailySummary.value = res.data.daily_summary || []
   } finally {
     loading.value = false
   }
 }
 
 async function fetchAllForExport() {
-  const params = { page: 1, page_size: 10000 }
+  const params = { page_size: 0 }
   if (dateRange.value?.length === 2) {
     params.start_date = dateRange.value[0]
     params.end_date = dateRange.value[1]
@@ -264,7 +307,7 @@ async function fetchAllForExport() {
   if (filter.customer_id) params.customer_id = filter.customer_id
   if (filter.vehicle_id) params.vehicle_id = filter.vehicle_id
   const res = await getStockOutList(params)
-  return res.data.list
+  return res.data
 }
 
 async function handleDelete(row) {
@@ -278,9 +321,9 @@ async function handleDelete(row) {
 
 async function handleExport() {
   try {
-    const data = await fetchAllForExport()
-    if (!data.length) { ElMessage.warning('没有数据可导出'); return }
-    exportToExcel([
+    const result = await fetchAllForExport()
+    if (!result.list.length) { ElMessage.warning('没有数据可导出'); return }
+    const columns = [
       { label: '购买日期', key: 'purchase_date', width: 15 },
       { label: '客户', key: 'customer_name', width: 15 },
       { label: '出油车辆', key: 'plate_number', width: 15 },
@@ -290,7 +333,66 @@ async function handleExport() {
       { label: '总金额(元)', key: 'total_amount', width: 12 },
       { label: '操作人', key: 'operator_name', width: 12 },
       { label: '备注', key: 'remark', width: 20 },
-    ], data, '出库记录')
+    ]
+    // 按日期分组，插入每日小结
+    const dailyMap = {}
+    if (result.daily_summary) {
+      for (const d of result.daily_summary) dailyMap[d.date] = d
+    }
+    const sorted = [...result.list].sort((a, b) => b.purchase_date.localeCompare(a.purchase_date) || b.id - a.id)
+    // 插入每日小结行
+    const rowsWithSummary = []
+    let prevDate = ''
+    for (let i = 0; i < sorted.length; i++) {
+      const date = sorted[i].purchase_date
+      if (date !== prevDate && prevDate !== '') {
+        const ds = dailyMap[prevDate]
+        if (ds && ds.count > 1) {
+          rowsWithSummary.push({
+            purchase_date: `小结: ${prevDate}`,
+            customer_name: '', plate_number: '', category_name: '',
+            liters: +ds.liters,
+            unit_price: '',
+            total_amount: +ds.amount,
+            operator_name: '', remark: `${ds.count}笔`,
+          })
+        }
+      }
+      rowsWithSummary.push(sorted[i])
+      prevDate = date
+    }
+    // 最后一组的小结
+    if (prevDate) {
+      const ds = dailyMap[prevDate]
+      if (ds && ds.count > 1) {
+        rowsWithSummary.push({
+          purchase_date: `小结: ${prevDate}`,
+          customer_name: '', plate_number: '', category_name: '',
+          liters: +ds.liters,
+          unit_price: '',
+          total_amount: +ds.amount,
+          operator_name: '', remark: `${ds.count}笔`,
+        })
+      }
+    }
+    // 合计行
+    if (result.summary) {
+      rowsWithSummary.push({
+        purchase_date: '合计',
+        customer_name: '', plate_number: '', category_name: '',
+        liters: +result.summary.total_liters,
+        unit_price: '',
+        total_amount: +result.summary.total_amount,
+        operator_name: '', remark: `共${result.summary.record_count}笔`,
+      })
+    }
+    let filename = '出库记录'
+    if (dateRange.value?.length === 2) {
+      filename += dateRange.value[0] === dateRange.value[1]
+        ? `_${dateRange.value[0]}`
+        : `_${dateRange.value[0]}至${dateRange.value[1]}`
+    }
+    exportToExcel(columns, rowsWithSummary, filename)
     ElMessage.success('导出成功')
   } catch { ElMessage.error('导出失败') }
 }

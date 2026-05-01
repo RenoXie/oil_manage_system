@@ -103,7 +103,61 @@ router.get('/', async (req, res) => {
     )
     .first();
 
-  const [inRecords, outRecords, inSum, outSum] = await Promise.all([inQuery, outQuery, inSummary, outSummary]);
+  // 每日小结查询
+  const inDaily = db('stock_in')
+    .where('stock_in.deletestatus', 0)
+    .modify((qb) => {
+      if (start_date) qb.where('stock_date', '>=', start_date);
+      if (end_date) qb.where('stock_date', '<=', end_date);
+      if (vehicle_id) qb.where('vehicle_id', vehicle_id);
+      if (category_id) qb.where('oil_category_id', category_id);
+    })
+    .select(
+      'stock_date as date',
+      db.raw('COALESCE(SUM(liters), 0) AS liters'),
+      db.raw('COALESCE(SUM(total_amount), 0) AS amount'),
+      db.raw('COUNT(*) AS count')
+    )
+    .groupBy('stock_date');
+
+  const outDaily = db('stock_out')
+    .where('stock_out.deletestatus', 0)
+    .modify((qb) => {
+      if (start_date) qb.where('purchase_date', '>=', start_date);
+      if (end_date) qb.where('purchase_date', '<=', end_date);
+      if (vehicle_id) qb.where('vehicle_id', vehicle_id);
+      if (category_id) qb.where('oil_category_id', category_id);
+    })
+    .select(
+      'purchase_date as date',
+      db.raw('COALESCE(SUM(liters), 0) AS liters'),
+      db.raw('COALESCE(SUM(total_amount), 0) AS amount'),
+      db.raw('COUNT(*) AS count')
+    )
+    .groupBy('purchase_date');
+
+  const [inRecords, outRecords, inSum, outSum, inDailyRows, outDailyRows] = await Promise.all([
+    inQuery, outQuery, inSummary, outSummary, inDaily, outDaily,
+  ]);
+
+  // 合并每日小结
+  const dailyMap = new Map();
+  for (const r of inDailyRows) {
+    const d = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10);
+    dailyMap.set(d, { date: d, in_liters: +r.liters, in_amount: +r.amount, in_count: r.count, out_liters: 0, out_amount: 0, out_count: 0 });
+  }
+  for (const r of outDailyRows) {
+    const d = r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10);
+    const existing = dailyMap.get(d);
+    if (existing) {
+      existing.out_liters = +r.liters;
+      existing.out_amount = +r.amount;
+      existing.out_count = r.count;
+    } else {
+      dailyMap.set(d, { date: d, in_liters: 0, in_amount: 0, in_count: 0, out_liters: +r.liters, out_amount: +r.amount, out_count: r.count });
+    }
+  }
+  const dailySummary = [...dailyMap.values()].sort((a, b) => b.date.localeCompare(a.date));
 
   const allRecords = [...inRecords, ...outRecords].sort((a, b) => {
     const d = new Date(b.date) - new Date(a.date);
@@ -112,9 +166,8 @@ router.get('/', async (req, res) => {
   });
 
   const total = allRecords.length;
-  const p = +page;
   const ps = +page_size;
-  const list = allRecords.slice((p - 1) * ps, p * ps);
+  const list = ps > 0 ? allRecords.slice((+page - 1) * ps, +page * ps) : allRecords;
 
   res.json({
     code: 0,
@@ -129,6 +182,11 @@ router.get('/', async (req, res) => {
         total_out_liters: +outSum.total_liters,
         total_out_amount: +outSum.total_amount,
       },
+      net_summary: {
+        net_liters: +(+inSum.total_liters - +outSum.total_liters).toFixed(2),
+        net_amount: +(+outSum.total_amount - +inSum.total_amount).toFixed(2),
+      },
+      daily_summary: dailySummary,
     },
   });
 });
