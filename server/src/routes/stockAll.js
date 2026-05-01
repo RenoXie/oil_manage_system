@@ -181,7 +181,7 @@ router.get('/', async (req, res) => {
     data: {
       list,
       total,
-      page: p,
+      page: +page,
       page_size: ps,
       summary: {
         total_in_liters: +inSum.total_liters,
