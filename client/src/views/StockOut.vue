@@ -80,7 +80,7 @@
       </el-table-column>
     </el-table>
 
-    <el-pagination style="margin-top:16px;justify-content:flex-end"
+    <el-pagination style="margin-top:16px;justify-content:center"
       v-model:current-page="filter.page" v-model:page-size="filter.page_size"
       :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next" @change="fetchData" />
 
