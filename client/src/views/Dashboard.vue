@@ -46,6 +46,11 @@
       </template>
     </el-row>
 
+    <el-card v-if="isCustomer && dailyChartData.length" style="margin-top:20px">
+      <template #header>本月出库趋势</template>
+      <div ref="chartRef" style="height:300px"></div>
+    </el-card>
+
     <el-card v-if="!isCustomer" style="margin-top:20px">
       <template #header>车辆当前库存</template>
       <el-table :data="inventory" size="small">
@@ -70,9 +75,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import * as echarts from 'echarts'
 import { getOverview } from '../api/statistics'
 import { getInventory } from '../api/inventory'
+import { getStockOutList } from '../api/stockOut'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
@@ -83,6 +90,9 @@ const overview = ref({
   stock_out: { total_liters: 0, total_amount: 0, record_count: 0 },
 })
 const inventory = ref([])
+const dailyChartData = ref([])
+const chartRef = ref(null)
+let chartInstance = null
 
 function getMonthRange() {
   const now = new Date()
@@ -95,14 +105,37 @@ function getMonthRange() {
   }
 }
 
+function renderChart() {
+  if (!chartRef.value || !dailyChartData.value.length) return
+  if (!chartInstance) chartInstance = echarts.init(chartRef.value)
+  const dates = dailyChartData.value.map((d) => d.date)
+  const liters = dailyChartData.value.map((d) => +d.liters)
+  chartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: dates },
+    yAxis: { type: 'value', name: 'L' },
+    series: [{ name: '出库量', type: 'line', data: liters, smooth: true, areaStyle: { opacity: 0.15 } }],
+  })
+}
+
 onMounted(async () => {
   const { start, end } = getMonthRange()
   try {
     const promises = [getOverview({ start_date: start, end_date: end })]
-    if (!isCustomer.value) promises.push(getInventory())
+    if (!isCustomer.value) {
+      promises.push(getInventory())
+    } else {
+      promises.push(getStockOutList({ start_date: start, end_date: end, page_size: 0 }))
+    }
     const results = await Promise.all(promises)
     overview.value = results[0].data
-    if (!isCustomer.value) inventory.value = results[1].data
+    if (!isCustomer.value) {
+      inventory.value = results[1].data
+    } else {
+      dailyChartData.value = results[1].data.daily_summary || []
+      await nextTick()
+      renderChart()
+    }
   } catch {
     // 接口异常时保留空数据展示
   }

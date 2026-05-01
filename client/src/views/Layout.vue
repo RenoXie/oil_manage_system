@@ -149,9 +149,9 @@ async function handleLogout() {
 }
 .logo span {
   color: #fff;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 0;
 }
 .el-main {
   padding: 20px;
