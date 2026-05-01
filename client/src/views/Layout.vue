@@ -62,6 +62,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { ElMessageBox } from 'element-plus'
 import { getCustomers, updateCustomer } from '../api/customers'
 import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled } from '@element-plus/icons-vue'
 
@@ -128,7 +129,12 @@ function hasPermission(key) {
 
 const menuItems = computed(() => allMenuItems.filter((item) => hasPermission(item.key)))
 
-function handleLogout() {
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
   userStore.logout()
   router.push('/login')
 }

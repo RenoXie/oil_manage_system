@@ -9,46 +9,55 @@ router.use(validateDateRange);
 
 router.get('/overview', async (req, res) => {
   const { start_date, end_date } = req.query;
+  const isCustomer = req.user.role === 'customer';
+  const custId = req.user.customer_id;
   const dateFilter = (qb) => {
     if (start_date) qb.where('stock_date', '>=', start_date);
     if (end_date) qb.where('stock_date', '<=', end_date);
   };
 
-  const inStats = await db('stock_in')
-    .where({ deletestatus: 0 })
-    .andWhere(dateFilter)
-    .sum('liters as total_liters')
-    .sum('total_amount as total_amount')
-    .count('* as record_count')
-    .first();
+  let inStats = { total_liters: 0, total_amount: 0, record_count: 0 };
+  let inByCategory = [];
 
-  const outStats = await db('stock_out')
+  if (!isCustomer) {
+    inStats = await db('stock_in')
+      .where({ deletestatus: 0 })
+      .andWhere(dateFilter)
+      .sum('liters as total_liters')
+      .sum('total_amount as total_amount')
+      .count('* as record_count')
+      .first();
+
+    inByCategory = await db('stock_in')
+      .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
+      .where('stock_in.deletestatus', 0)
+      .andWhere(dateFilter)
+      .select('oil_categories.name')
+      .sum('stock_in.liters as liters')
+      .sum('stock_in.total_amount as amount')
+      .groupBy('stock_in.oil_category_id', 'oil_categories.name');
+  }
+
+  const outQuery = db('stock_out')
     .where({ deletestatus: 0 })
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
-    })
+    });
+
+  // 客户只看自己的出库数据
+  if (isCustomer) {
+    outQuery.where('customer_id', custId || 0);
+  }
+
+  const outStats = await outQuery.clone()
     .sum('liters as total_liters')
     .sum('total_amount as total_amount')
     .count('* as record_count')
     .first();
 
-  const inByCategory = await db('stock_in')
-    .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
-    .where('stock_in.deletestatus', 0)
-    .andWhere(dateFilter)
-    .select('oil_categories.name')
-    .sum('stock_in.liters as liters')
-    .sum('stock_in.total_amount as amount')
-    .groupBy('stock_in.oil_category_id', 'oil_categories.name');
-
-  const outByCategory = await db('stock_out')
+  const outByCategory = await outQuery.clone()
     .join('oil_categories', 'stock_out.oil_category_id', 'oil_categories.id')
-    .where('stock_out.deletestatus', 0)
-    .andWhere((qb) => {
-      if (start_date) qb.where('purchase_date', '>=', start_date);
-      if (end_date) qb.where('purchase_date', '<=', end_date);
-    })
     .select('oil_categories.name')
     .sum('stock_out.liters as liters')
     .sum('stock_out.total_amount as amount')

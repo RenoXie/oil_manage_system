@@ -1,35 +1,52 @@
 <template>
   <div>
     <el-row :gutter="20">
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">本月入库总量</div>
-          <div class="stat-value">{{ (overview.stock_in?.total_liters || 0).toFixed(2) }} L</div>
-          <div class="stat-sub">金额 ¥{{ (overview.stock_in?.total_amount || 0).toFixed(2) }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">本月出库总量</div>
-          <div class="stat-value">{{ (overview.stock_out?.total_liters || 0).toFixed(2) }} L</div>
-          <div class="stat-sub">金额 ¥{{ (overview.stock_out?.total_amount || 0).toFixed(2) }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">入库记录数</div>
-          <div class="stat-value">{{ overview.stock_in?.record_count || 0 }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-label">出库记录数</div>
-          <div class="stat-value">{{ overview.stock_out?.record_count || 0 }}</div>
-        </el-card>
-      </el-col>
+      <template v-if="!isCustomer">
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">本月入库总量</div>
+            <div class="stat-value">{{ (overview.stock_in?.total_liters || 0).toFixed(2) }} L</div>
+            <div class="stat-sub">金额 ¥{{ (overview.stock_in?.total_amount || 0).toFixed(2) }}</div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">本月出库总量</div>
+            <div class="stat-value">{{ (overview.stock_out?.total_liters || 0).toFixed(2) }} L</div>
+            <div class="stat-sub">金额 ¥{{ (overview.stock_out?.total_amount || 0).toFixed(2) }}</div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">入库记录数</div>
+            <div class="stat-value">{{ overview.stock_in?.record_count || 0 }}</div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">出库记录数</div>
+            <div class="stat-value">{{ overview.stock_out?.record_count || 0 }}</div>
+          </el-card>
+        </el-col>
+      </template>
+      <template v-else>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">本月出库总量</div>
+            <div class="stat-value">{{ (overview.stock_out?.total_liters || 0).toFixed(2) }} L</div>
+            <div class="stat-sub">金额 ¥{{ (overview.stock_out?.total_amount || 0).toFixed(2) }}</div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <div class="stat-label">出库记录数</div>
+            <div class="stat-value">{{ overview.stock_out?.record_count || 0 }}</div>
+          </el-card>
+        </el-col>
+      </template>
     </el-row>
 
-    <el-card style="margin-top:20px">
+    <el-card v-if="!isCustomer" style="margin-top:20px">
       <template #header>车辆当前库存</template>
       <el-table :data="inventory" size="small">
         <el-table-column prop="plate_number" label="车牌号" />
@@ -53,9 +70,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getOverview } from '../api/statistics'
 import { getInventory } from '../api/inventory'
+import { useUserStore } from '../stores/user'
+
+const userStore = useUserStore()
+const isCustomer = computed(() => userStore.user?.role === 'customer')
 
 const overview = ref({
   stock_in: { total_liters: 0, total_amount: 0, record_count: 0 },
@@ -67,7 +88,7 @@ function getMonthRange() {
   const now = new Date()
   const y = now.getFullYear()
   const m = now.getMonth() + 1
-  const lastDay = new Date(y, m, 0).getDate() // 自动获取当月实际天数
+  const lastDay = new Date(y, m, 0).getDate()
   return {
     start: `${y}-${String(m).padStart(2, '0')}-01`,
     end: `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
@@ -77,12 +98,11 @@ function getMonthRange() {
 onMounted(async () => {
   const { start, end } = getMonthRange()
   try {
-    const [over, inv] = await Promise.all([
-      getOverview({ start_date: start, end_date: end }),
-      getInventory(),
-    ])
-    overview.value = over.data
-    inventory.value = inv.data
+    const promises = [getOverview({ start_date: start, end_date: end })]
+    if (!isCustomer.value) promises.push(getInventory())
+    const results = await Promise.all(promises)
+    overview.value = results[0].data
+    if (!isCustomer.value) inventory.value = results[1].data
   } catch {
     // 接口异常时保留空数据展示
   }
