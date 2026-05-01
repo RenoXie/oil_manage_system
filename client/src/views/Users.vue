@@ -64,10 +64,11 @@
           </el-checkbox-group>
         </el-form-item>
         <!-- 客户关联：客户角色时显示 -->
-        <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id">
-          <el-select v-model="form.customer_id" style="width:100%" filterable clearable placeholder="选择客户">
+        <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id" :rules="[{ required: true, message: '请选择关联客户' }]">
+          <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户">
             <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
+          <div style="color:#909399;font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
         </el-form-item>
       </el-form>
       <template #footer>
