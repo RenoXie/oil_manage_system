@@ -42,7 +42,8 @@
     <el-dialog v-model="dialogVisible" :title="editId ? '编辑用户' : '添加用户'" width="500px" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" :disabled="!!editId" />
+          <el-input v-model="form.username" :disabled="usernameDisabled" />
+          <div v-if="form.role==='customer' && !editId && selectedCustomer?.phone" style="color:#909399;font-size:12px;margin-top:2px">已自动填入客户手机号</div>
         </el-form-item>
         <el-form-item label="姓名" prop="real_name">
           <el-input v-model="form.real_name" />
@@ -65,7 +66,7 @@
         </el-form-item>
         <!-- 客户关联：客户角色时显示 -->
         <el-form-item v-if="form.role === 'customer'" label="关联客户" prop="customer_id" :rules="[{ required: true, message: '请选择关联客户' }]">
-          <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户">
+          <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户" @change="onCustomerChange">
             <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
           <div style="color:#909399;font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
@@ -80,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { getUsers, createUser, updateUser, deleteUser } from '../api/users'
@@ -119,10 +120,28 @@ function permLabel(key) { return permLabelMap[key] || key }
 function roleType(r) { return { admin: 'danger', employee: 'primary', customer: 'warning' }[r] || 'info' }
 function roleLabel(r) { return { admin: '管理员', employee: '员工', customer: '客户' }[r] || r }
 
+const selectedCustomer = computed(() => customers.value.find((c) => c.id === form.customer_id) || null)
+
+const usernameDisabled = computed(() => {
+  if (editId.value) return true
+  if (form.role === 'customer' && selectedCustomer.value?.phone) return true
+  return false
+})
+
 function onRoleChange() {
   if (form.role === 'admin') {
     form.permissions = []
     form.customer_id = null
+  }
+}
+
+function onCustomerChange(customerId) {
+  if (editId.value) return
+  const c = customers.value.find((x) => x.id === customerId)
+  if (!c) return
+  form.real_name = c.name || ''
+  if (c.phone) {
+    form.username = c.phone
   }
 }
 
