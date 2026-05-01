@@ -68,7 +68,7 @@
         <!-- 权限：非管理员时显示 -->
         <el-form-item v-if="form.role !== 'admin'" label="页面权限">
           <el-checkbox-group v-model="form.permissions">
-            <el-checkbox v-for="p in permOptions" :key="p.key" :value="p.key" :label="p.key">{{ p.label }}</el-checkbox>
+            <el-checkbox v-for="p in permOptions" :key="p.key" :label="p.key">{{ p.label }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>      </el-form>
       <template #footer>
