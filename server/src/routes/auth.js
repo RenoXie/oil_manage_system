@@ -19,8 +19,11 @@ router.post('/login', async (req, res) => {
   if (!valid) {
     return res.status(401).json({ code: 401, msg: '用户名或密码错误' });
   }
-  let permissions = [];
-  try { permissions = JSON.parse(user.permissions || '[]'); } catch { /* ignore */ }
+  let permissions = user.permissions;
+  if (typeof permissions === 'string') {
+    try { permissions = JSON.parse(permissions); } catch { permissions = []; }
+  }
+  if (!Array.isArray(permissions)) permissions = [];
   const token = jwt.sign(
     { id: user.id, username: user.username, real_name: user.real_name, role: user.role, permissions, customer_id: user.customer_id },
     process.env.JWT_SECRET,
@@ -61,7 +64,10 @@ router.post('/register', auth, async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   const user = await db('users').select('id', 'username', 'real_name', 'role', 'permissions', 'customer_id').where({ id: req.user.id, deletestatus: 0 }).first();
   if (user?.permissions) {
-    try { user.permissions = JSON.parse(user.permissions); } catch { user.permissions = []; }
+    if (typeof user.permissions === 'string') {
+      try { user.permissions = JSON.parse(user.permissions); } catch { user.permissions = []; }
+    }
+    if (!Array.isArray(user.permissions)) user.permissions = [];
   }
   res.json({ code: 0, data: user });
 });

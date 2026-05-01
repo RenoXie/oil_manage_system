@@ -11,7 +11,10 @@ router.get('/', adminOnly, async (req, res) => {
   const users = await db('users').select('id', 'username', 'real_name', 'role', 'permissions', 'customer_id', 'created_at').where({ deletestatus: 0 });
   const data = users.map((u) => {
     if (u.permissions) {
-      try { u.permissions = JSON.parse(u.permissions); } catch { u.permissions = []; }
+      if (typeof u.permissions === 'string') {
+        try { u.permissions = JSON.parse(u.permissions); } catch { u.permissions = []; }
+      }
+      if (!Array.isArray(u.permissions)) u.permissions = [];
     }
     return u;
   });
