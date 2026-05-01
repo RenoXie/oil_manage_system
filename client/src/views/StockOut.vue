@@ -72,7 +72,7 @@
       </el-table-column>
       <el-table-column v-if="!isCustomer" prop="operator_name" label="操作人" width="100" />
       <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="130" fixed="right">
         <template #default="{ row }">
           <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
           <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>

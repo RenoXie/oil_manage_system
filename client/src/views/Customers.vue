@@ -24,7 +24,7 @@
       <el-table-column prop="created_at" label="创建时间" width="160">
         <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="130" fixed="right">
         <template #default="{ row }">
           <el-button text type="primary" size="small" @click="openDialog(row)">编辑</el-button>
           <el-button text type="danger" size="small" @click="handleDelete(row)">删除</el-button>
