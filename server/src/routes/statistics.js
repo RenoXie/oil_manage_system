@@ -39,7 +39,7 @@ router.get('/overview', async (req, res) => {
   }
 
   const outQuery = db('stock_out')
-    .where({ deletestatus: 0 })
+    .where('stock_out.deletestatus', 0)
     .andWhere((qb) => {
       if (start_date) qb.where('purchase_date', '>=', start_date);
       if (end_date) qb.where('purchase_date', '<=', end_date);
