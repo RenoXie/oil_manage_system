@@ -70,7 +70,7 @@ if /i "!CONFIRM!"=="N" (
         echo DB_PASSWORD=!DB_PASSWORD!
         echo DB_NAME=!DB_NAME!
         echo JWT_SECRET=!JWT_KEY!
-        echo JWT_EXPIRES_IN=7d
+        echo JWT_EXPIRES_IN=24h
         echo ALLOWED_ORIGINS=http://localhost:5173
         echo PORT=3000
     ) > .env

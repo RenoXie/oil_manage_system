@@ -28,4 +28,19 @@ function hasPermission(user, key) {
   return perms.includes(key);
 }
 
-module.exports = { auth, adminOnly, hasPermission };
+// 增删改权限中间件：admin 全通过，customer 全拒绝，employee 按权限 key 判断
+function requirePermission(key) {
+  return (req, res, next) => {
+    if (req.user.role === 'admin') return next();
+    if (req.user.role === 'customer') {
+      return res.status(403).json({ code: 403, msg: '客户无此操作权限' });
+    }
+    const perms = req.user.permissions || [];
+    if (!perms.includes(key)) {
+      return res.status(403).json({ code: 403, msg: '无权限，请联系管理员授权' });
+    }
+    next();
+  };
+}
+
+module.exports = { auth, adminOnly, hasPermission, requirePermission };

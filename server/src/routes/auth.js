@@ -1,15 +1,32 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/login', async (req, res) => {
+const VALID_ROLES = ['admin', 'employee', 'customer'];
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 429, msg: '登录尝试过于频繁，请15分钟后再试' },
+});
+
+router.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ code: 400, msg: '用户名和密码不能为空' });
+  }
+  if (typeof username !== 'string' || username.length > 100) {
+    return res.status(400).json({ code: 400, msg: '用户名格式错误' });
+  }
+  if (typeof password !== 'string' || password.length > 100) {
+    return res.status(400).json({ code: 400, msg: '密码格式错误' });
   }
   const user = await db('users').where({ username, deletestatus: 0 }).first();
   if (!user) {
@@ -45,6 +62,18 @@ router.post('/register', auth, async (req, res) => {
   const { username, password, real_name, role } = req.body;
   if (!username || !password || !real_name) {
     return res.status(400).json({ code: 400, msg: '请填写完整信息' });
+  }
+  if (typeof username !== 'string' || username.length > 50) {
+    return res.status(400).json({ code: 400, msg: '用户名最长50字符' });
+  }
+  if (typeof password !== 'string' || password.length > 100) {
+    return res.status(400).json({ code: 400, msg: '密码最长100字符' });
+  }
+  if (typeof real_name !== 'string' || real_name.length > 50) {
+    return res.status(400).json({ code: 400, msg: '姓名最长50字符' });
+  }
+  if (role && !VALID_ROLES.includes(role)) {
+    return res.status(400).json({ code: 400, msg: '角色值无效' });
   }
   const exists = await db('users').where({ username, deletestatus: 0 }).first();
   if (exists) {

@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../config/db');
-const { auth } = require('../middleware/auth');
+const { auth, requirePermission } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
 const { auditLog } = require('../middleware/auditLog');
 
@@ -40,7 +40,6 @@ router.get('/', async (req, res) => {
 
   applyFilters(query, { start_date, end_date, customer_id, vehicle_id });
 
-  // 汇总查询
   const summaryQuery = db('stock_out')
     .where('stock_out.deletestatus', 0)
     .modify((qb) => applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }))
@@ -51,7 +50,6 @@ router.get('/', async (req, res) => {
     )
     .first();
 
-  // 每日小结
   const dailyQuery = db('stock_out')
     .where('stock_out.deletestatus', 0)
     .modify((qb) => applyFilters(qb, { start_date, end_date, customer_id, vehicle_id }))
@@ -95,10 +93,19 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('stock-out'), async (req, res) => {
   const { oil_category_id, vehicle_id, customer_id, unit_price, liters, purchase_date, remark } = req.body;
   if (!oil_category_id || !vehicle_id || !customer_id || !unit_price || !liters || !purchase_date) {
     return res.status(400).json({ code: 400, msg: '请填写完整的出库信息' });
+  }
+  if (isNaN(unit_price) || +unit_price <= 0) {
+    return res.status(400).json({ code: 400, msg: '单价必须大于0' });
+  }
+  if (isNaN(liters) || +liters <= 0) {
+    return res.status(400).json({ code: 400, msg: '数量必须大于0' });
+  }
+  if (remark && typeof remark === 'string' && remark.length > 500) {
+    return res.status(400).json({ code: 400, msg: '备注最长500字符' });
   }
   const total_amount = +(unit_price * liters).toFixed(2);
   const [id] = await db('stock_out').insert({
@@ -136,7 +143,7 @@ router.get('/:id', async (req, res) => {
   res.json({ code: 0, data: record });
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('stock-out'), async (req, res) => {
   const oldRecord = await db('stock_out').where({ id: req.params.id, deletestatus: 0 }).first();
   if (!oldRecord) return res.status(404).json({ code: 404, msg: '记录不存在' });
 
@@ -145,24 +152,35 @@ router.put('/:id', async (req, res) => {
   if (oil_category_id !== undefined) update.oil_category_id = oil_category_id;
   if (vehicle_id !== undefined) update.vehicle_id = vehicle_id;
   if (customer_id !== undefined) update.customer_id = customer_id;
-  if (unit_price !== undefined) update.unit_price = unit_price;
-  if (liters !== undefined) update.liters = liters;
-  if (purchase_date !== undefined) update.purchase_date = purchase_date;
-  if (remark !== undefined) update.remark = remark;
-  if (unit_price && liters) {
-    update.total_amount = +(unit_price * liters).toFixed(2);
-  } else if (unit_price || liters) {
-    const p = unit_price || oldRecord.unit_price;
-    const l = liters || oldRecord.liters;
-    update.total_amount = +(p * l).toFixed(2);
+  if (unit_price !== undefined) {
+    if (isNaN(unit_price) || +unit_price <= 0) {
+      return res.status(400).json({ code: 400, msg: '单价必须大于0' });
+    }
+    update.unit_price = unit_price;
   }
+  if (liters !== undefined) {
+    if (isNaN(liters) || +liters <= 0) {
+      return res.status(400).json({ code: 400, msg: '数量必须大于0' });
+    }
+    update.liters = liters;
+  }
+  if (purchase_date !== undefined) update.purchase_date = purchase_date;
+  if (remark !== undefined) {
+    if (typeof remark === 'string' && remark.length > 500) {
+      return res.status(400).json({ code: 400, msg: '备注最长500字符' });
+    }
+    update.remark = remark;
+  }
+  const p = unit_price || oldRecord.unit_price;
+  const l = liters || oldRecord.liters;
+  update.total_amount = +(+p * +l).toFixed(2);
   await db('stock_out').where({ id: req.params.id }).update(update);
   res.json({ code: 0, msg: '更新成功' });
   const newRecord = { ...oldRecord, ...update };
   auditLog('stock_out', req.params.id, 'update', req.user.id, oldRecord, newRecord);
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('stock-out'), async (req, res) => {
   const oldRecord = await db('stock_out').where({ id: req.params.id }).first();
   if (!oldRecord) return res.status(404).json({ code: 404, msg: '记录不存在' });
   await db('stock_out').where({ id: req.params.id }).update({ deletestatus: 1 });

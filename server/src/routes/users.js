@@ -7,6 +7,17 @@ const router = express.Router();
 
 router.use(auth);
 
+const VALID_ROLES = ['admin', 'employee', 'customer'];
+const VALID_PERMISSIONS = [
+  'dashboard', 'stock-in', 'stock-out', 'stock-all',
+  'inventory', 'statistics', 'vehicles', 'categories', 'customers', 'users',
+];
+
+function validatePermissions(perms) {
+  if (!Array.isArray(perms)) return [];
+  return perms.filter(p => VALID_PERMISSIONS.includes(p));
+}
+
 router.get('/', adminOnly, async (req, res) => {
   const users = await db('users').select('id', 'username', 'real_name', 'role', 'permissions', 'customer_id', 'created_at').where({ deletestatus: 0 });
   const data = users.map((u) => {
@@ -26,6 +37,18 @@ router.post('/', adminOnly, async (req, res) => {
   if (!username || !password || !real_name) {
     return res.status(400).json({ code: 400, msg: '请填写完整信息' });
   }
+  if (typeof username !== 'string' || username.length > 50) {
+    return res.status(400).json({ code: 400, msg: '用户名最长50字符' });
+  }
+  if (typeof password !== 'string' || password.length > 100) {
+    return res.status(400).json({ code: 400, msg: '密码最长100字符' });
+  }
+  if (typeof real_name !== 'string' || real_name.length > 50) {
+    return res.status(400).json({ code: 400, msg: '姓名最长50字符' });
+  }
+  if (role && !VALID_ROLES.includes(role)) {
+    return res.status(400).json({ code: 400, msg: '角色值无效' });
+  }
   const exists = await db('users').where({ username, deletestatus: 0 }).first();
   if (exists) {
     return res.status(400).json({ code: 400, msg: '用户名已存在' });
@@ -36,7 +59,7 @@ router.post('/', adminOnly, async (req, res) => {
     password: hashed,
     real_name,
     role: role || 'employee',
-    permissions: JSON.stringify(permissions || []),
+    permissions: JSON.stringify(validatePermissions(permissions)),
     customer_id: customer_id || null,
   });
   res.json({ code: 0, data: { id } });
@@ -45,10 +68,27 @@ router.post('/', adminOnly, async (req, res) => {
 router.put('/:id', adminOnly, async (req, res) => {
   const { real_name, role, password, permissions, customer_id } = req.body;
   const update = {};
-  if (real_name) update.real_name = real_name;
-  if (role) update.role = role;
-  if (password) update.password = await bcrypt.hash(password, 10);
-  if (permissions !== undefined) update.permissions = JSON.stringify(permissions);
+  if (real_name !== undefined) {
+    if (typeof real_name !== 'string' || real_name.length > 50) {
+      return res.status(400).json({ code: 400, msg: '姓名最长50字符' });
+    }
+    update.real_name = real_name;
+  }
+  if (role !== undefined) {
+    if (!VALID_ROLES.includes(role)) {
+      return res.status(400).json({ code: 400, msg: '角色值无效' });
+    }
+    update.role = role;
+  }
+  if (password !== undefined) {
+    if (typeof password !== 'string' || password.length > 100) {
+      return res.status(400).json({ code: 400, msg: '密码最长100字符' });
+    }
+    update.password = await bcrypt.hash(password, 10);
+  }
+  if (permissions !== undefined) {
+    update.permissions = JSON.stringify(validatePermissions(permissions));
+  }
   if (customer_id !== undefined) update.customer_id = customer_id || null;
   update.updated_at = db.fn.now();
   await db('users').where({ id: req.params.id, deletestatus: 0 }).update(update);
