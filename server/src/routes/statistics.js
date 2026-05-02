@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
+const { toMoney } = require('../utils/money');
 
 const router = express.Router();
 router.use(auth);
@@ -68,13 +69,13 @@ router.get('/overview', async (req, res) => {
     data: {
       stock_in: {
         total_liters: +inStats.total_liters || 0,
-        total_amount: +inStats.total_amount || 0,
+        total_amount: toMoney(inStats.total_amount || 0),
         record_count: inStats.record_count,
         by_category: inByCategory,
       },
       stock_out: {
         total_liters: +outStats.total_liters || 0,
-        total_amount: +outStats.total_amount || 0,
+        total_amount: toMoney(outStats.total_amount || 0),
         record_count: outStats.record_count,
         by_category: outByCategory,
       },
@@ -123,7 +124,7 @@ router.get('/buyer', async (req, res) => {
       buyer: customer.name,
       summary: {
         total_liters: +summary.total_liters || 0,
-        total_amount: +summary.total_amount || 0,
+        total_amount: toMoney(summary.total_amount || 0),
         times: summary.times,
       },
       records,
@@ -151,8 +152,8 @@ router.get('/buyers', async (req, res) => {
 
   const total = list.reduce(
     (acc, item) => {
-      acc.liters += +item.total_liters;
-      acc.amount += +item.total_amount;
+      acc.liters = toMoney(acc.liters + +item.total_liters);
+      acc.amount = toMoney(acc.amount + +item.total_amount);
       acc.times += item.times;
       return acc;
     },

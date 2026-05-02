@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { toMoney } from './money'
 
 export function exportToExcel(columns, data, filename, options = {}) {
   const { sumColumns = [] } = options
@@ -16,7 +17,7 @@ export function exportToExcel(columns, data, filename, options = {}) {
       if (i === 0) return '合计'
       if (sumColumns.includes(k)) {
         const sum = data.reduce((acc, row) => acc + (+(row[k] || 0)), 0)
-        return +sum.toFixed(2)
+        return toMoney(sum)
       }
       return ''
     })

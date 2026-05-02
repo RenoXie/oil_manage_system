@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { auth, requirePermission } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
 const { auditLog } = require('../middleware/auditLog');
+const { toMoney } = require('../utils/money');
 
 const router = express.Router();
 router.use(auth);
@@ -85,7 +86,7 @@ router.get('/', async (req, res) => {
       page_size: +page_size,
       summary: {
         total_liters: +summary.total_liters,
-        total_amount: +summary.total_amount,
+        total_amount: toMoney(summary.total_amount),
         record_count: summary.record_count,
       },
       daily_summary: dailySummary,
@@ -107,7 +108,7 @@ router.post('/', requirePermission('stock-out'), async (req, res) => {
   if (remark && typeof remark === 'string' && remark.length > 500) {
     return res.status(400).json({ code: 400, msg: '备注最长500字符' });
   }
-  const total_amount = +(unit_price * liters).toFixed(2);
+  const total_amount = toMoney(unit_price * liters);
   const [id] = await db('stock_out').insert({
     oil_category_id,
     vehicle_id,
@@ -173,7 +174,7 @@ router.put('/:id', requirePermission('stock-out'), async (req, res) => {
   }
   const p = unit_price || oldRecord.unit_price;
   const l = liters || oldRecord.liters;
-  update.total_amount = +(+p * +l).toFixed(2);
+  update.total_amount = toMoney(p * l);
   await db('stock_out').where({ id: req.params.id }).update(update);
   res.json({ code: 0, msg: '更新成功' });
   const newRecord = { ...oldRecord, ...update };

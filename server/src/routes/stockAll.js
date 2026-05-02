@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
+const { toMoney } = require('../utils/money');
 
 const router = express.Router();
 router.use(auth);
@@ -185,13 +186,13 @@ router.get('/', async (req, res) => {
       page_size: ps,
       summary: {
         total_in_liters: +inSum.total_liters,
-        total_in_amount: +inSum.total_amount,
+        total_in_amount: toMoney(inSum.total_amount),
         total_out_liters: +outSum.total_liters,
-        total_out_amount: +outSum.total_amount,
+        total_out_amount: toMoney(outSum.total_amount),
       },
       net_summary: {
-        net_liters: +(+inSum.total_liters - +outSum.total_liters).toFixed(2),
-        net_amount: +(+outSum.total_amount - +inSum.total_amount).toFixed(2),
+        net_liters: toMoney(inSum.total_liters - outSum.total_liters),
+        net_amount: toMoney(outSum.total_amount - inSum.total_amount),
       },
       daily_summary: dailySummary,
     },

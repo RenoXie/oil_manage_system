@@ -132,6 +132,7 @@ import { getStockAllList } from '../api/stockAll'
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
 import { formatDate, getCurrentMonthRange } from '../utils/date'
+import { toMoney } from '../utils/money'
 import ExcelJS from 'exceljs'
 
 const list = ref([])
@@ -209,8 +210,8 @@ async function handleExport() {
       if (date !== prevDate && prevDate !== '') {
         const ds = dailyMap[prevDate]
         if (ds && (ds.in_count + ds.out_count) > 1) {
-          const netL = +(+ds.in_liters - +ds.out_liters).toFixed(2)
-          const netA = +(+ds.out_amount - +ds.in_amount).toFixed(2)
+          const netL = toMoney(ds.in_liters - ds.out_liters)
+          const netA = toMoney(ds.out_amount - ds.in_amount)
           rowsWithSummary.push({
             date: `小结: ${prevDate}`,
             type: '日汇总',

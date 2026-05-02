@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
+const { toMoney } = require('../utils/money');
 
 const router = express.Router();
 router.use(auth);
@@ -123,9 +124,9 @@ router.get('/:vehicleId', async (req, res) => {
       records,
       summary: {
         total_in_liters: +inSummary.total_liters || 0,
-        total_in_amount: +inSummary.total_amount || 0,
+        total_in_amount: toMoney(inSummary.total_amount || 0),
         total_out_liters: +outSummary.total_liters || 0,
-        total_out_amount: +outSummary.total_amount || 0,
+        total_out_amount: toMoney(outSummary.total_amount || 0),
       },
     },
   });

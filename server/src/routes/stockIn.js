@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { auth, requirePermission } = require('../middleware/auth');
 const { validateDateRange } = require('../middleware/dateValidate');
 const { auditLog } = require('../middleware/auditLog');
+const { toMoney } = require('../utils/money');
 
 const router = express.Router();
 router.use(auth);
@@ -51,7 +52,7 @@ router.post('/', requirePermission('stock-in'), async (req, res) => {
   if (remark && typeof remark === 'string' && remark.length > 500) {
     return res.status(400).json({ code: 400, msg: '备注最长500字符' });
   }
-  const total_amount = +(price_per_liter * liters).toFixed(2);
+  const total_amount = toMoney(price_per_liter * liters);
   const [id] = await db('stock_in').insert({
     oil_category_id,
     vehicle_id,
@@ -113,7 +114,7 @@ router.put('/:id', requirePermission('stock-in'), async (req, res) => {
   }
   const p = price_per_liter || oldRecord.price_per_liter;
   const l = liters || oldRecord.liters;
-  update.total_amount = +(+p * +l).toFixed(2);
+  update.total_amount = toMoney(p * l);
   await db('stock_in').where({ id: req.params.id }).update(update);
   res.json({ code: 0, msg: '更新成功' });
   const newRecord = { ...oldRecord, ...update };
