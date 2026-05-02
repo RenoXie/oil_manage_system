@@ -9,10 +9,13 @@ async function setup() {
     password: process.env.DB_PASSWORD,
   });
 
-  await connection.query(
-    `CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-  );
-  console.log(`Database ${process.env.DB_NAME} is ready.`);
+  const dbNames = [process.env.DB_NAME, 'oilms_prod'];
+  for (const name of dbNames) {
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+    console.log(`Database ${name} is ready.`);
+  }
   await connection.end();
 }
 
