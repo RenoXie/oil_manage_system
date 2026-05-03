@@ -43,8 +43,25 @@
         </template>
       </el-table-column>
       <el-table-column prop="operator_name" label="操作人" width="100" />
-      <el-table-column prop="old_data" label="修改前" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="new_data" label="修改后" min-width="200" show-overflow-tooltip />
+      <el-table-column label="变更详情" min-width="350">
+        <template #default="{ row }">
+          <div class="change-detail">
+            <template v-if="getChanges(row).length">
+              <div v-for="(item, i) in getChanges(row)" :key="i" class="change-field">
+                <span class="field-label">{{ item.label }}</span>
+                <span v-if="row.action === 'update'">
+                  <span class="old-val">{{ item.old }}</span>
+                  <span class="arrow">→</span>
+                  <span class="new-val">{{ item.new }}</span>
+                </span>
+                <span v-else-if="row.action === 'create'" class="new-val">{{ item.new }}</span>
+                <span v-else class="old-val">{{ item.old }}</span>
+              </div>
+            </template>
+            <span v-else style="color:#c0c4cc">-</span>
+          </div>
+        </template>
+      </el-table-column>
     </el-table>
 
     <el-pagination style="margin-top:16px;justify-content:center"
@@ -64,12 +81,66 @@ const loading = ref(false)
 const dateRange = ref([])
 const filter = reactive({ table_name: '', action: '', page: 1, page_size: 20 })
 
+const fieldLabels = {
+  stock_date: '入库日期',
+  purchase_date: '购买日期',
+  vehicle_id: '车辆',
+  oil_category_id: '油品',
+  customer_id: '客户',
+  price_per_liter: '单价',
+  unit_price: '单价',
+  liters: '数量(L)',
+  total_amount: '总金额(元)',
+  remark: '备注',
+}
+
 function actionType(action) {
   return action === 'create' ? 'success' : action === 'delete' ? 'danger' : 'warning'
 }
 
 function actionLabel(action) {
   return action === 'create' ? '新增' : action === 'delete' ? '删除' : '修改'
+}
+
+function parseData(data) {
+  if (!data) return {}
+  if (typeof data === 'string') {
+    try { return JSON.parse(data) } catch { return {} }
+  }
+  return data
+}
+
+function getChanges(row) {
+  const oldData = parseData(row.old_data)
+  const newData = parseData(row.new_data)
+
+  if (row.action === 'update') {
+    const changes = []
+    for (const key of Object.keys(newData)) {
+      const oldVal = oldData[key]
+      const newVal = newData[key]
+      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+        changes.push({
+          label: fieldLabels[key] || key,
+          old: oldVal != null ? oldVal : '-',
+          new: newVal != null ? newVal : '-',
+        })
+      }
+    }
+    return changes
+  }
+
+  if (row.action === 'create') {
+    return Object.entries(newData).map(([key, val]) => ({
+      label: fieldLabels[key] || key,
+      new: val != null ? val : '-',
+    }))
+  }
+
+  return Object.entries(oldData).map(([key, val]) => ({
+    label: fieldLabels[key] || key,
+    old: val != null ? val : '-',
+  }))
 }
 
 function clearFilters() {
@@ -96,3 +167,30 @@ async function fetchData() {
 
 onMounted(fetchData)
 </script>
+
+<style scoped>
+.change-detail { font-size: 13px; }
+.change-field {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  gap: 6px;
+}
+.field-label {
+  color: #909399;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.field-label::after { content: ':'; }
+.old-val {
+  color: #f56c6c;
+  text-decoration: line-through;
+  padding: 0 4px;
+}
+.arrow { color: #c0c4cc; }
+.new-val {
+  color: #67c23a;
+  font-weight: 500;
+  padding: 0 4px;
+}
+</style>

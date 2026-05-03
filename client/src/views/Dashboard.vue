@@ -53,8 +53,8 @@
       </template>
     </el-row>
 
-    <el-card v-if="isCustomer && dailyChartData.length" style="margin-top:20px">
-      <template #header>本月出库趋势</template>
+    <el-card v-if="dailyChartData.length" style="margin-top:20px">
+      <template #header>{{ isCustomer ? '本月出库趋势' : '本月进出库趋势' }}</template>
       <div ref="chartRef" style="height:300px"></div>
     </el-card>
 
@@ -88,6 +88,7 @@ import * as echarts from 'echarts'
 import { getOverview } from '../api/statistics'
 import { getInventory } from '../api/inventory'
 import { getStockOutList } from '../api/stockOut'
+import { getStockAllList } from '../api/stockAll'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
@@ -118,13 +119,29 @@ function renderChart() {
   if (!chartRef.value || !dailyChartData.value.length) return
   if (!chartInstance) chartInstance = echarts.init(chartRef.value)
   const dates = dailyChartData.value.map((d) => d.date)
-  const liters = dailyChartData.value.map((d) => +d.liters)
-  chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: dates },
-    yAxis: { type: 'value', name: 'L' },
-    series: [{ name: '出库量', type: 'line', data: liters, smooth: true, areaStyle: { opacity: 0.15 } }],
-  })
+
+  if (isCustomer.value) {
+    const liters = dailyChartData.value.map((d) => +d.liters)
+    chartInstance.setOption({
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: dates },
+      yAxis: { type: 'value', name: 'L' },
+      series: [{ name: '出库量', type: 'line', data: liters, smooth: true, areaStyle: { opacity: 0.15 } }],
+    })
+  } else {
+    const inLiters = dailyChartData.value.map((d) => +d.in_liters)
+    const outLiters = dailyChartData.value.map((d) => +d.out_liters)
+    chartInstance.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['入库量', '出库量'] },
+      xAxis: { type: 'category', data: dates },
+      yAxis: { type: 'value', name: 'L' },
+      series: [
+        { name: '入库量', type: 'line', data: inLiters, smooth: true, areaStyle: { opacity: 0.1 }, itemStyle: { color: '#67c23a' } },
+        { name: '出库量', type: 'line', data: outLiters, smooth: true, areaStyle: { opacity: 0.1 }, itemStyle: { color: '#e6a23c' } },
+      ],
+    })
+  }
 }
 
 onMounted(async () => {
@@ -133,6 +150,7 @@ onMounted(async () => {
     const promises = [getOverview({ start_date: start, end_date: end })]
     if (!isCustomer.value) {
       promises.push(getInventory())
+      promises.push(getStockAllList({ start_date: start, end_date: end, page_size: 0 }))
     } else {
       promises.push(getStockOutList({ start_date: start, end_date: end, page_size: 0 }))
     }
@@ -140,11 +158,12 @@ onMounted(async () => {
     overview.value = results[0].data
     if (!isCustomer.value) {
       inventory.value = results[1].data
+      dailyChartData.value = results[2].data.daily_summary || []
     } else {
       dailyChartData.value = results[1].data.daily_summary || []
-      await nextTick()
-      renderChart()
     }
+    await nextTick()
+    renderChart()
   } catch (err) {
     console.error('Dashboard fetch failed:', err)
   } finally {
