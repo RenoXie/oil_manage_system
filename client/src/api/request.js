@@ -15,16 +15,22 @@ request.interceptors.request.use((config) => {
   return config
 })
 
+let isHandling401 = false
+
 request.interceptors.response.use(
   (res) => res.data,
   (err) => {
     if (err.response) {
       const { status, data } = err.response
       if (status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        router.push('/login')
-        ElMessage.error('登录已过期，请重新登录')
+        if (!isHandling401) {
+          isHandling401 = true
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          router.push('/login')
+          ElMessage.error('登录已过期，请重新登录')
+          setTimeout(() => { isHandling401 = false }, 1000)
+        }
       } else {
         ElMessage.error(data?.msg || '请求失败')
       }

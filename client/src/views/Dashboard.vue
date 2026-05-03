@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { getOverview } from '../api/statistics'
 import { getInventory } from '../api/inventory'
@@ -136,8 +136,15 @@ onMounted(async () => {
       await nextTick()
       renderChart()
     }
-  } catch {
-    // 接口异常时保留空数据展示
+  } catch (err) {
+    console.error('Dashboard fetch failed:', err)
+  }
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
   }
 })
 </script>

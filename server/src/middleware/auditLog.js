@@ -1,7 +1,8 @@
 const db = require('../config/db');
 
-async function auditLog(tableName, recordId, action, operatorId, oldData, newData) {
-  await db('audit_logs').insert({
+async function auditLog(tableName, recordId, action, operatorId, oldData, newData, trx) {
+  const query = trx ? db('audit_logs').transacting(trx) : db('audit_logs');
+  await query.insert({
     table_name: tableName,
     record_id: recordId,
     action,

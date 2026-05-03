@@ -25,7 +25,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   if (typeof username !== 'string' || username.length > 100) {
     return res.status(400).json({ code: 400, msg: '用户名格式错误' });
   }
-  if (typeof password !== 'string' || password.length > 100) {
+  if (typeof password !== 'string' || password.length < 1 || password.length > 100) {
     return res.status(400).json({ code: 400, msg: '密码格式错误' });
   }
   const user = await db('users').where({ username, deletestatus: 0 }).first();
@@ -66,8 +66,8 @@ router.post('/register', auth, async (req, res) => {
   if (typeof username !== 'string' || username.length > 50) {
     return res.status(400).json({ code: 400, msg: '用户名最长50字符' });
   }
-  if (typeof password !== 'string' || password.length > 100) {
-    return res.status(400).json({ code: 400, msg: '密码最长100字符' });
+  if (typeof password !== 'string' || password.length < 6 || password.length > 100) {
+    return res.status(400).json({ code: 400, msg: '密码长度需在6-100字符之间' });
   }
   if (typeof real_name !== 'string' || real_name.length > 50) {
     return res.status(400).json({ code: 400, msg: '姓名最长50字符' });

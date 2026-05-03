@@ -19,6 +19,11 @@ const app = express();
 
 app.use(helmet());
 
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET is not set. Check your .env file.');
+  process.exit(1);
+}
+
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map(s => s.trim());
 app.use(cors({
   origin(origin, callback) {

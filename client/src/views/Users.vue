@@ -197,10 +197,17 @@ async function handleSave() {
 }
 
 async function handleDelete(row) {
-  if (row.id === userStore.user?.id) return
-  await ElMessageBox.confirm('确定删除该用户吗？', '提示', { type: 'warning' })
-  await deleteUser(row.id)
-  fetchData()
+  if (row.id === userStore.user?.id) {
+    ElMessage.warning('不能删除自己')
+    return
+  }
+  try {
+    await ElMessageBox.confirm('确定删除该用户吗？', '提示', { type: 'warning' })
+    await deleteUser(row.id)
+    fetchData()
+  } catch (err) {
+    if (err.response) ElMessage.error(err.response.data.msg)
+  }
 }
 
 async function fetchData() {
