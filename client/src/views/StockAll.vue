@@ -24,10 +24,11 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="fetchData">查询</el-button>
-      </el-form-item>
-    </el-form>
+          <el-button @click="clearFilters">清除筛选</el-button>
+        </el-form-item>
+      </el-form>
 
-    <el-row :gutter="16" style="margin-bottom:16px">
+      <el-row :gutter="16" style="margin-bottom:16px">
       <el-col :span="4">
         <el-card shadow="hover">
           <div style="color:#909399;font-size:13px">总入库量(L)</div>
@@ -67,6 +68,7 @@
     </el-row>
 
     <el-table :data="list" stripe v-loading="loading">
+      <template #empty><el-empty description="暂无进出记录" /></template>
       <el-table-column prop="date" label="日期" width="120">
         <template #default="{ row }">{{ formatDate(row.date) }}</template>
       </el-table-column>
@@ -93,7 +95,7 @@
 
     <el-pagination style="margin-top:16px;justify-content:center"
       v-model:current-page="filter.page" v-model:page-size="filter.page_size"
-      :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next" @change="fetchData" />
+      :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next,jumper" @change="fetchData" />
 
     <!-- 每日小结 -->
     <el-card shadow="never" style="margin-top:16px" v-if="dailySummary.length">
@@ -170,6 +172,14 @@ async function fetchData() {
   }
 }
 
+function clearFilters() {
+  dateRange.value = getCurrentMonthRange()
+  filter.vehicle_id = ''
+  filter.category_id = ''
+  filter.page = 1
+  fetchData()
+}
+
 async function fetchAllForExport() {
   const params = { page_size: 0 }
   if (dateRange.value?.length === 2) {
@@ -184,6 +194,15 @@ async function fetchAllForExport() {
 
 async function handleExport() {
   try {
+    if (total.value > 5000) {
+      try {
+        await ElMessageBox.confirm(
+          `当前查询结果共 ${total.value} 条，导出大量数据可能较慢。建议缩小日期范围后再导出。是否继续导出全部数据？`,
+          '数据量较大',
+          { type: 'warning', confirmButtonText: '继续导出', cancelButtonText: '取消' }
+        )
+      } catch { return }
+    }
     const result = await fetchAllForExport()
     if (!result.list.length) { ElMessage.warning('没有数据可导出'); return }
     const columns = [

@@ -8,6 +8,7 @@
     </template>
 
     <el-table :data="list" stripe v-loading="loading">
+      <template #empty><el-empty description="暂无油品类别" /></template>
       <el-table-column prop="name" label="类别名称" width="200" />
       <el-table-column prop="created_at" label="创建时间" width="200">
         <template #default="{ row }">{{ formatDate(row.created_at, true) }}</template>
@@ -20,7 +21,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑类别' : '添加类别'" width="400px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑类别' : '添加类别'" width="400px" :before-close="beforeCloseDialog" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="类别名称" prop="name">
           <el-input v-model="form.name" placeholder="如 92#汽油" />
@@ -46,6 +47,7 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
+const originalFormJson = ref('')
 const form = reactive({ name: '' })
 const rules = { name: [{ required: true, message: '请输入类别名称' }] }
 
@@ -58,6 +60,17 @@ function resetForm() {
 function openDialog(row) {
   if (row) { editId.value = row.id; form.name = row.name }
   dialogVisible.value = true
+  originalFormJson.value = JSON.stringify(form)
+}
+
+function beforeCloseDialog(done) {
+  if (JSON.stringify(form) !== originalFormJson.value) {
+    ElMessageBox.confirm('有未保存的修改，确定关闭吗？', '提示', { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+      .then(() => done())
+      .catch(() => {})
+  } else {
+    done()
+  }
 }
 
 async function handleSave() {

@@ -8,6 +8,7 @@
     </template>
 
     <el-table :data="list" stripe v-loading="loading">
+      <template #empty><el-empty description="暂无用户数据" /></template>
       <el-table-column prop="username" label="用户名" width="150" />
       <el-table-column prop="real_name" label="姓名" width="120" />
       <el-table-column prop="role" label="角色" width="100">
@@ -39,7 +40,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑用户' : '添加用户'" width="500px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑用户' : '添加用户'" width="500px" :before-close="beforeCloseDialog" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" style="width:100%" @change="onRoleChange">
@@ -95,6 +96,7 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
+const originalFormJson = ref('')
 const form = reactive({ username: '', real_name: '', role: 'employee', password: '', permissions: [], customer_id: null })
 const rules = {
   username: [{ required: true, message: '请输入用户名' }],
@@ -112,6 +114,7 @@ const permOptions = [
   { key: 'vehicles', label: '车辆管理' },
   { key: 'categories', label: '油品类别' },
   { key: 'customers', label: '客户管理' },
+  { key: 'audit', label: '审计日志' },
 ]
 const permLabelMap = Object.fromEntries(permOptions.map((p) => [p.key, p.label]))
 
@@ -166,6 +169,17 @@ async function openDialog(row) {
     form.customer_id = null
   }
   dialogVisible.value = true
+  originalFormJson.value = JSON.stringify(form)
+}
+
+function beforeCloseDialog(done) {
+  if (JSON.stringify(form) !== originalFormJson.value) {
+    ElMessageBox.confirm('有未保存的修改，确定关闭吗？', '提示', { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+      .then(() => done())
+      .catch(() => {})
+  } else {
+    done()
+  }
 }
 
 async function handleSave() {

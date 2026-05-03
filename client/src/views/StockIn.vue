@@ -27,10 +27,12 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="fetchData">查询</el-button>
-      </el-form-item>
-    </el-form>
+          <el-button @click="clearFilters">清除筛选</el-button>
+        </el-form-item>
+      </el-form>
 
-    <el-table :data="list" stripe v-loading="loading">
+      <el-table :data="list" stripe v-loading="loading">
+        <template #empty><el-empty description="暂无入库记录" /></template>
       <el-table-column prop="stock_date" label="入库日期" width="120">
         <template #default="{ row }">{{ formatDate(row.stock_date) }}</template>
       </el-table-column>
@@ -58,10 +60,10 @@
 
     <el-pagination style="margin-top:16px;justify-content:center"
       v-model:current-page="filter.page" v-model:page-size="filter.page_size"
-      :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next" @change="fetchData" />
+      :total="total" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next,jumper" @change="fetchData" />
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑入库' : '新增入库'" width="500px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑入库' : '新增入库'" width="500px" :before-close="beforeCloseDialog" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="入库日期" prop="stock_date">
           <el-date-picker v-model="form.stock_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
@@ -77,10 +79,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="单价(元/L)" prop="price_per_liter">
-          <el-input-number v-model="form.price_per_liter" :min="0" :precision="2" style="width:100%" />
+          <el-input-number v-model="form.price_per_liter" :min="0.01" :precision="2" style="width:100%" />
         </el-form-item>
         <el-form-item label="数量(L)" prop="liters">
-          <el-input-number v-model="form.liters" :min="0" :precision="2" style="width:100%" />
+          <el-input-number v-model="form.liters" :min="0.01" :precision="2" style="width:100%" />
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.remark" />
@@ -115,6 +117,7 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
+const originalFormJson = ref('')
 const form = reactive({
   stock_date: '', vehicle_id: '', oil_category_id: '',
   price_per_liter: 0, liters: 0, remark: '',
@@ -146,6 +149,7 @@ async function openDialog(row) {
     })
   }
   dialogVisible.value = true
+  originalFormJson.value = JSON.stringify(form)
 }
 
 async function handleSave() {
@@ -181,6 +185,24 @@ async function fetchData() {
   }
 }
 
+function clearFilters() {
+  dateRange.value = getCurrentMonthRange()
+  filter.vehicle_id = ''
+  filter.category_id = ''
+  filter.page = 1
+  fetchData()
+}
+
+function beforeCloseDialog(done) {
+  if (JSON.stringify(form) !== originalFormJson.value) {
+    ElMessageBox.confirm('有未保存的修改，确定关闭吗？', '提示', { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+      .then(() => done())
+      .catch(() => {})
+  } else {
+    done()
+  }
+}
+
 async function fetchAllForExport() {
   const params = {}
   if (dateRange.value?.length === 2) {
@@ -206,6 +228,15 @@ async function handleDelete(row) {
 
 async function handleExport() {
   try {
+    if (total.value > 5000) {
+      try {
+        await ElMessageBox.confirm(
+          `当前查询结果共 ${total.value} 条，导出大量数据可能较慢。建议缩小日期范围后再导出。是否继续导出全部数据？`,
+          '数据量较大',
+          { type: 'warning', confirmButtonText: '继续导出', cancelButtonText: '取消' }
+        )
+      } catch { return }
+    }
     const data = await fetchAllForExport()
     if (!data.length) { ElMessage.warning('没有数据可导出'); return }
     exportToExcel([

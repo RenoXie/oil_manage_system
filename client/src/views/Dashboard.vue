@@ -1,7 +1,14 @@
 <template>
   <div>
-    <el-row :gutter="20">
-      <template v-if="!isCustomer">
+    <el-row :gutter="20" v-loading="loading">
+      <template v-if="loading">
+        <el-col v-for="n in (isCustomer ? 2 : 4)" :key="n" :span="6">
+          <el-card shadow="hover" class="stat-card">
+            <el-skeleton :rows="3" animated />
+          </el-card>
+        </el-col>
+      </template>
+      <template v-else-if="!isCustomer">
         <el-col :span="6">
           <el-card shadow="hover" class="stat-card">
             <div class="stat-label">本月入库总量</div>
@@ -51,9 +58,10 @@
       <div ref="chartRef" style="height:300px"></div>
     </el-card>
 
-    <el-card v-if="!isCustomer" style="margin-top:20px">
+    <el-card v-if="!isCustomer" style="margin-top:20px" v-loading="loading">
       <template #header>车辆当前库存</template>
       <el-table :data="inventory" size="small">
+        <template #empty><el-empty description="暂无库存数据" /></template>
         <el-table-column prop="plate_number" label="车牌号" />
         <el-table-column prop="category_name" label="油品类别" />
         <el-table-column prop="total_in" label="总入库(L)">
@@ -85,6 +93,7 @@ import { useUserStore } from '../stores/user'
 const userStore = useUserStore()
 const isCustomer = computed(() => userStore.user?.role === 'customer')
 
+const loading = ref(true)
 const overview = ref({
   stock_in: { total_liters: 0, total_amount: 0, record_count: 0 },
   stock_out: { total_liters: 0, total_amount: 0, record_count: 0 },
@@ -138,6 +147,8 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Dashboard fetch failed:', err)
+  } finally {
+    loading.value = false
   }
 })
 

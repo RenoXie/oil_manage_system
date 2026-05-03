@@ -14,6 +14,7 @@ const stockOutRoutes = require('./routes/stockOut');
 const stockAllRoutes = require('./routes/stockAll');
 const inventoryRoutes = require('./routes/inventory');
 const statisticsRoutes = require('./routes/statistics');
+const auditRoutes = require('./routes/audit');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/stock-out', stockOutRoutes);
 app.use('/api/stock-all', stockAllRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/audit', auditRoutes);
 
 app.use((err, req, res, _next) => {
   const ts = new Date().toISOString();

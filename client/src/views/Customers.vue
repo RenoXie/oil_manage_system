@@ -9,14 +9,16 @@
 
     <el-form :inline="true" :model="filter" size="small" @submit.prevent>
       <el-form-item label="搜索">
-        <el-input v-model="filter.keyword" placeholder="客户名称" clearable style="width:200px" @keyup.enter="fetchData" />
+        <el-input v-model="filter.keyword" placeholder="客户名称" clearable style="width:200px" @keyup.enter="fetchData" @input="debouncedSearch" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="fetchData">查询</el-button>
+        <el-button @click="clearFilters">清除筛选</el-button>
       </el-form-item>
     </el-form>
 
     <el-table :data="list" stripe v-loading="loading">
+      <template #empty><el-empty description="暂无客户数据" /></template>
       <el-table-column prop="name" label="客户名称" width="180" />
       <el-table-column prop="phone" label="电话" width="150" />
       <el-table-column prop="bank_name" label="开户银行" width="180" />
@@ -32,7 +34,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑客户' : '新增客户'" width="500px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑客户' : '新增客户'" width="500px" :before-close="beforeCloseDialog" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="客户名称" prop="name">
           <el-input v-model="form.name" placeholder="必填" />
@@ -60,6 +62,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../api/customers'
 import { formatDate } from '../utils/date'
+import { useDebounce } from '../utils/debounce'
 
 const list = ref([])
 const loading = ref(false)
@@ -68,6 +71,7 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
+const originalFormJson = ref('')
 const form = reactive({ name: '', phone: '', bank_name: '', bank_account: '' })
 const rules = {
   name: [{ required: true, message: '请输入客户名称' }],
@@ -90,6 +94,17 @@ function openDialog(row) {
     })
   }
   dialogVisible.value = true
+  originalFormJson.value = JSON.stringify(form)
+}
+
+function beforeCloseDialog(done) {
+  if (JSON.stringify(form) !== originalFormJson.value) {
+    ElMessageBox.confirm('有未保存的修改，确定关闭吗？', '提示', { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+      .then(() => done())
+      .catch(() => {})
+  } else {
+    done()
+  }
 }
 
 async function handleSave() {
@@ -111,6 +126,13 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+const debouncedSearch = useDebounce(fetchData, 400)
+
+function clearFilters() {
+  filter.keyword = ''
+  fetchData()
 }
 
 async function fetchData() {

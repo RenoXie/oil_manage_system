@@ -1,8 +1,9 @@
 <template>
   <el-container style="height:100vh">
-    <el-aside width="220px" style="background:#304156">
-      <div class="logo">
-        <span>慧和晟<br/>油品进出库管理系统</span>
+    <el-aside :width="collapsed ? '64px' : '220px'" style="background:#304156;transition:width 0.3s">
+      <div class="logo" :style="collapsed ? 'height:56px' : ''">
+        <span v-if="!collapsed">慧和晟<br/>油品进出库管理系统</span>
+        <span v-else style="font-size:14px">慧和晟</span>
       </div>
       <el-menu
         :default-active="$route.path"
@@ -11,6 +12,7 @@
         text-color="#bfcbd9"
         active-text-color="#409eff"
         style="border-right:none"
+        :collapse="collapsed"
       >
         <el-menu-item v-for="item in menuItems" :key="item.key" :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
@@ -19,11 +21,17 @@
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header style="background:#fff;border-bottom:1px solid #dcdfe6;display:flex;align-items:center;justify-content:space-between;padding:0 20px">
-        <el-breadcrumb>
-          <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-          <el-breadcrumb-item v-if="$route.meta.title">{{ $route.meta.title }}</el-breadcrumb-item>
-        </el-breadcrumb>
+      <el-header style="background:#fff;border-bottom:1px solid #dcdfe6;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px">
+        <div style="display:flex;align-items:center">
+          <el-icon style="cursor:pointer;font-size:20px;margin-right:16px" @click="collapsed = !collapsed">
+            <Fold v-if="!collapsed" />
+            <Expand v-else />
+          </el-icon>
+          <el-breadcrumb>
+            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="$route.meta?.title">{{ $route.meta.title }}</el-breadcrumb-item>
+          </el-breadcrumb>
+        </div>
         <div style="display:flex;align-items:center">
           <el-button v-if="userStore.user?.role==='customer'" text type="primary" style="margin-right:12px" @click="openProfile">个人信息</el-button>
           <span style="margin-right:12px;color:#606266">{{ userStore.user?.real_name }}</span>
@@ -36,13 +44,13 @@
     </el-container>
   </el-container>
 
-  <el-dialog v-model="profileVisible" title="个人信息" width="450px">
+  <el-dialog v-model="profileVisible" title="个人信息" width="450px" :close-on-click-modal="false">
     <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" label-width="80px">
       <el-form-item label="客户名称" prop="name">
         <el-input v-model="profileForm.name" />
       </el-form-item>
-      <el-form-item label="手机号" prop="phone">
-        <el-input v-model="profileForm.phone" />
+      <el-form-item label="联系电话" prop="phone">
+        <el-input v-model="profileForm.phone" placeholder="手机或固话均可" />
       </el-form-item>
       <el-form-item label="开户行">
         <el-input v-model="profileForm.bank_name" />
@@ -64,10 +72,11 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { ElMessageBox } from 'element-plus'
 import { getCustomers, updateCustomer } from '../api/customers'
-import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled, Document, Fold, Expand } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const collapsed = ref(false)
 
 const allMenuItems = [
   { key: 'dashboard',  path: '/dashboard',  label: '首页概览', icon: DataAnalysis },
@@ -80,6 +89,7 @@ const allMenuItems = [
   { key: 'categories', path: '/categories', label: '油品类别', icon: Collection },
   { key: 'customers',  path: '/customers',  label: '客户管理', icon: User },
   { key: 'users',      path: '/users',      label: '用户管理', icon: UserFilled },
+  { key: 'audit',      path: '/audit',      label: '审计日志', icon: Document },
 ]
 
 // customer profile dialog
@@ -147,6 +157,7 @@ async function handleLogout() {
   align-items: center;
   justify-content: center;
   padding: 0 8px;
+  transition: height 0.3s;
 }
 .logo span {
   color: #fff;

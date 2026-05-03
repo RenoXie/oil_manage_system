@@ -8,6 +8,7 @@
     </template>
 
     <el-table :data="list" stripe v-loading="loading">
+      <template #empty><el-empty description="暂无车辆数据" /></template>
       <el-table-column prop="plate_number" label="车牌号" width="180" />
       <el-table-column prop="notes" label="备注" min-width="200" show-overflow-tooltip />
       <el-table-column prop="created_at" label="创建时间" width="180">
@@ -21,7 +22,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑车辆' : '添加车辆'" width="450px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑车辆' : '添加车辆'" width="450px" :before-close="beforeCloseDialog" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="车牌号" prop="plate_number">
           <el-input v-model="form.plate_number" placeholder="如 京A12345" />
@@ -50,6 +51,7 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
+const originalFormJson = ref('')
 const form = reactive({ plate_number: '', notes: '' })
 const rules = { plate_number: [{ required: true, message: '请输入车牌号' }] }
 
@@ -67,6 +69,17 @@ function openDialog(row) {
     form.notes = row.notes
   }
   dialogVisible.value = true
+  originalFormJson.value = JSON.stringify(form)
+}
+
+function beforeCloseDialog(done) {
+  if (JSON.stringify(form) !== originalFormJson.value) {
+    ElMessageBox.confirm('有未保存的修改，确定关闭吗？', '提示', { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' })
+      .then(() => done())
+      .catch(() => {})
+  } else {
+    done()
+  }
 }
 
 async function handleSave() {

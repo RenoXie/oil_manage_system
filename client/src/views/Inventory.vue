@@ -3,6 +3,7 @@
     <el-card style="margin-bottom:20px">
       <template #header>车辆实时库存</template>
       <el-table :data="inventory" stripe v-loading="loading">
+        <template #empty><el-empty description="暂无库存数据" /></template>
         <el-table-column prop="plate_number" label="车牌号" width="150" />
         <el-table-column prop="category_name" label="油品类别" width="120" />
         <el-table-column prop="total_in" label="总入库(L)">
@@ -55,6 +56,7 @@
       </el-row>
 
       <el-table :data="detail.records" stripe size="small">
+        <template #empty><el-empty description="暂无进出记录" /></template>
         <el-table-column prop="type" label="类型" width="70">
           <template #default="{ row }">
             <el-tag :type="row.type==='入库'?'success':'danger'" size="small">{{ row.type }}</el-tag>
