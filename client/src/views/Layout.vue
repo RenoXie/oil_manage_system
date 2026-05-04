@@ -1,6 +1,6 @@
 <template>
   <el-container style="height:100vh">
-    <el-aside :width="collapsed ? '64px' : '220px'" style="background:#304156;transition:width 0.3s">
+    <el-aside :width="collapsed ? '64px' : '220px'" style="background:var(--sidebar-bg);transition:width 0.3s">
       <div class="logo" :style="collapsed ? 'height:56px' : ''">
         <span v-if="!collapsed">慧和晟<br/>油品进出库管理系统</span>
         <span v-else style="font-size:14px">慧和晟</span>
@@ -8,7 +8,7 @@
       <el-menu
         :default-active="$route.path"
         router
-        background-color="#304156"
+        :background-color="sidebarBg"
         text-color="#bfcbd9"
         active-text-color="#409eff"
         style="border-right:none"
@@ -21,7 +21,7 @@
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header style="background:#fff;border-bottom:1px solid #dcdfe6;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px">
+      <el-header style="background:var(--header-bg);border-bottom:1px solid var(--header-border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px">
         <div style="display:flex;align-items:center">
           <el-icon style="cursor:pointer;font-size:20px;margin-right:16px" @click="collapsed = !collapsed">
             <Fold v-if="!collapsed" />
@@ -34,11 +34,14 @@
         </div>
         <div style="display:flex;align-items:center">
           <el-button v-if="userStore.user?.role==='customer'" text type="primary" style="margin-right:12px" @click="openProfile">个人信息</el-button>
-          <span style="margin-right:12px;color:#606266">{{ userStore.user?.real_name }}</span>
+          <el-button text style="margin-right:8px;font-size:20px" @click="toggleTheme">
+            <el-icon><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+          </el-button>
+          <span style="margin-right:12px;color:var(--el-text-color-regular)">{{ userStore.user?.real_name }}</span>
           <el-button text type="danger" @click="handleLogout">退出</el-button>
         </div>
       </el-header>
-      <el-main style="background:#f0f2f5">
+      <el-main style="background:var(--main-bg)">
         <router-view />
       </el-main>
     </el-container>
@@ -67,16 +70,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { ElMessageBox } from 'element-plus'
 import { getCustomers, updateCustomer } from '../api/customers'
-import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled, Document, Edit, Fold, Expand } from '@element-plus/icons-vue'
+import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled, Document, Edit, Fold, Expand, Sunny, Moon } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const collapsed = ref(false)
+
+const isDark = ref(document.documentElement.classList.contains('dark'))
+const sidebarBg = computed(() => isDark.value ? '#1d1e1f' : '#304156')
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
 
 const allMenuItems = [
   { key: 'dashboard',  path: '/dashboard',  label: '首页概览', icon: DataAnalysis },
@@ -152,6 +164,18 @@ async function handleLogout() {
 </script>
 
 <style>
+:root {
+  --sidebar-bg: #304156;
+  --header-bg: #fff;
+  --header-border: #dcdfe6;
+  --main-bg: #f0f2f5;
+}
+html.dark {
+  --sidebar-bg: #1d1e1f;
+  --header-bg: #1d1e1f;
+  --header-border: #4c4d4f;
+  --main-bg: #0a0a0a;
+}
 .logo {
   height: 72px;
   display: flex;

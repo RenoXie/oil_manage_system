@@ -31,37 +31,37 @@
       <el-row :gutter="16" style="margin-bottom:16px">
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">总入库量(L)</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">总入库量(L)</div>
           <div style="font-size:22px;font-weight:600;color:#67c23a">{{ summary.total_in_liters.toFixed(2) }}</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">总入库金额(元)</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">总入库金额(元)</div>
           <div style="font-size:22px;font-weight:600;color:#67c23a">{{ summary.total_in_amount.toFixed(2) }}</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">总出库量(L)</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">总出库量(L)</div>
           <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_out_liters.toFixed(2) }}</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">总出库金额(元)</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">总出库金额(元)</div>
           <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_out_amount.toFixed(2) }}</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">净油量(L) 入-出</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">净油量(L) 入-出</div>
           <div style="font-size:22px;font-weight:600;color:#409eff">{{ netSummary.net_liters.toFixed(2) }}</div>
         </el-card>
       </el-col>
       <el-col :span="4">
         <el-card shadow="hover">
-          <div style="color:#909399;font-size:13px">净金额(元) 出-入</div>
+          <div style="color:var(--el-text-color-secondary);font-size:13px">净金额(元) 出-入</div>
           <div style="font-size:22px;font-weight:600;color:#409eff">{{ netSummary.net_amount.toFixed(2) }}</div>
         </el-card>
       </el-col>

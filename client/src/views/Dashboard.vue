@@ -183,7 +183,7 @@ onUnmounted(() => {
 
 <style>
 .stat-card { text-align: center; }
-.stat-label { font-size: 14px; color: #909399; }
-.stat-value { font-size: 28px; font-weight: 700; color: #303133; margin: 8px 0; }
-.stat-sub { font-size: 13px; color: #606266; }
+.stat-label { font-size: 14px; color: var(--el-text-color-secondary, #909399); }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--el-text-color-primary, #303133); margin: 8px 0; }
+.stat-sub { font-size: 13px; color: var(--el-text-color-regular, #606266); }
 </style>

@@ -90,7 +90,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div style="margin-top:12px;color:#909399">
+      <div style="margin-top:12px;color:var(--el-text-color-secondary)">
         合计：{{ buyers.total.liters.toFixed(2) }} L / ¥{{ buyers.total.amount.toFixed(2) }} / {{ buyers.total.times }} 次
       </div>
     </el-card>
@@ -203,7 +203,7 @@ onMounted(fetchAll)
 
 <style>
 .stat-card { text-align: center; }
-.stat-label { font-size: 14px; color: #909399; }
-.stat-value { font-size: 28px; font-weight: 700; color: #303133; margin: 8px 0; }
-.stat-sub { font-size: 13px; color: #606266; }
+.stat-label { font-size: 14px; color: var(--el-text-color-secondary); }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--el-text-color-primary); margin: 8px 0; }
+.stat-sub { font-size: 13px; color: var(--el-text-color-regular); }
 </style>

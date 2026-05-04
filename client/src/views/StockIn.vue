@@ -93,7 +93,7 @@
             <el-option v-for="s in dialogFilteredSuppliers" :key="s.id" :label="s.name" :value="s.id" />
             <template #empty>
               <div style="padding:8px;text-align:center">
-                <span style="color:#909399">无匹配供应商</span>
+                <span style="color:var(--el-text-color-secondary)">无匹配供应商</span>
                 <el-button text type="primary" size="small" style="margin-left:8px" @click="openSupplierCreate">
                   新建供应商
                 </el-button>

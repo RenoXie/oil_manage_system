@@ -19,7 +19,7 @@
       <el-table-column label="权限" min-width="200">
         <template #default="{ row }">
           <template v-if="row.role === 'admin'">
-            <span style="color:#909399">全部权限</span>
+            <span style="color:var(--el-text-color-secondary)">全部权限</span>
           </template>
           <template v-else-if="row.permissions?.length">
             <el-tag v-for="p in row.permissions" :key="p" size="small" style="margin-right:4px;margin-bottom:2px">{{ permLabel(p) }}</el-tag>
@@ -54,11 +54,11 @@
           <el-select v-model="form.customer_id" style="width:100%" filterable placeholder="选择客户" @change="onCustomerChange">
             <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
-          <div style="color:#909399;font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
+          <div style="color:var(--el-text-color-secondary);font-size:12px;margin-top:4px">如无所需客户，请先到"客户管理"页面添加</div>
         </el-form-item>
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="usernameDisabled" />
-          <div v-if="form.role==='customer' && !editId && selectedCustomer?.phone" style="color:#909399;font-size:12px;margin-top:2px">已自动填入客户手机号</div>
+          <div v-if="form.role==='customer' && !editId && selectedCustomer?.phone" style="color:var(--el-text-color-secondary);font-size:12px;margin-top:2px">已自动填入客户手机号</div>
         </el-form-item>
         <el-form-item label="姓名" prop="real_name">
           <el-input v-model="form.real_name" />

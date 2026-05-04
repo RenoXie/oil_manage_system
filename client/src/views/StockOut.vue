@@ -36,19 +36,19 @@
       <el-row :gutter="16" style="margin-bottom:16px">
         <el-col :span="6">
           <el-card shadow="hover">
-            <div style="color:#909399;font-size:13px">总出库量(L)</div>
+            <div style="color:var(--el-text-color-secondary);font-size:13px">总出库量(L)</div>
             <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_liters.toFixed(2) }}</div>
           </el-card>
         </el-col>
         <el-col :span="6">
           <el-card shadow="hover">
-            <div style="color:#909399;font-size:13px">总金额(元)</div>
+            <div style="color:var(--el-text-color-secondary);font-size:13px">总金额(元)</div>
             <div style="font-size:22px;font-weight:600;color:#e6a23c">{{ summary.total_amount.toFixed(2) }}</div>
           </el-card>
         </el-col>
         <el-col :span="6">
           <el-card shadow="hover">
-            <div style="color:#909399;font-size:13px">记录数</div>
+            <div style="color:var(--el-text-color-secondary);font-size:13px">记录数</div>
             <div style="font-size:22px;font-weight:600">{{ summary.record_count }}</div>
           </el-card>
         </el-col>
@@ -116,7 +116,7 @@
             <el-option v-for="c in dialogFilteredCustomers" :key="c.id" :label="c.name" :value="c.id" />
             <template #empty>
               <div style="padding:8px;text-align:center">
-                <span style="color:#909399">无匹配客户</span>
+                <span style="color:var(--el-text-color-secondary)">无匹配客户</span>
                 <el-button text type="primary" size="small" style="margin-left:8px" @click="openCustomerCreate">
                   新建客户
                 </el-button>

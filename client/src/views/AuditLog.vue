@@ -77,7 +77,7 @@
                 <span v-else class="old-val">{{ item.old }}</span>
               </div>
             </template>
-            <span v-else style="color:#c0c4cc">-</span>
+            <span v-else style="color:var(--el-text-color-placeholder, #c0c4cc)">-</span>
           </div>
         </template>
       </el-table-column>
@@ -225,7 +225,7 @@ onMounted(() => {
   gap: 6px;
 }
 .field-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   min-width: 80px;
   flex-shrink: 0;
 }
@@ -235,7 +235,7 @@ onMounted(() => {
   text-decoration: line-through;
   padding: 0 4px;
 }
-.arrow { color: #c0c4cc; }
+.arrow { color: var(--el-text-color-placeholder, #c0c4cc); }
 .new-val {
   color: #67c23a;
   font-weight: 500;
