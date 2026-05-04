@@ -4,6 +4,13 @@
       <span>审计日志</span>
     </template>
 
+    <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px">
+      <template #title>
+        系统仅保留近 12 个月的审计日志在主表中，更早的数据已自动归档。
+        如需查询历史数据，请勾选「包含归档数据」。
+      </template>
+    </el-alert>
+
     <el-form :inline="true" :model="filter" size="small">
       <el-form-item label="日期">
         <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
@@ -27,13 +34,21 @@
         </el-select>
       </el-form-item>
       <el-form-item>
+        <el-checkbox v-model="filter.include_archived" @change="fetchData">包含归档数据</el-checkbox>
+      </el-form-item>
+      <el-form-item>
         <el-button type="primary" @click="fetchData">查询</el-button>
         <el-button @click="clearFilters">清除筛选</el-button>
       </el-form-item>
     </el-form>
 
     <el-table :data="list" stripe v-loading="loading">
-      <el-table-column prop="id" label="ID" width="70" />
+      <el-table-column prop="id" label="ID" width="70">
+        <template #default="{ row }">
+          {{ row.id }}
+          <el-tag v-if="row.archived" size="small" type="info" style="margin-left:4px">归档</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="created_at" label="时间" width="160" />
       <el-table-column prop="table_name" label="操作表" width="90">
         <template #default="{ row }">
@@ -85,7 +100,7 @@ const total = ref(0)
 const loading = ref(false)
 const dateRange = ref([])
 const userList = ref([])
-const filter = reactive({ table_name: '', action: '', operator_id: '', page: 1, page_size: 20 })
+const filter = reactive({ table_name: '', action: '', operator_id: '', page: 1, page_size: 20, include_archived: false })
 
 const tableOptions = [
   { label: '入库', value: 'stock_in' },
@@ -177,6 +192,7 @@ async function fetchData() {
   loading.value = true
   try {
     const params = { ...filter }
+    params.include_archived = filter.include_archived ? '1' : '0'
     if (dateRange.value?.length === 2) {
       params.start_date = dateRange.value[0]
       params.end_date = dateRange.value[1]
