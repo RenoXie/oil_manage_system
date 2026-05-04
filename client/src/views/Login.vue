@@ -4,10 +4,10 @@
       <h1>宁波慧和晟供应链管理有限公司<br/>油品进出库管理系统</h1>
       <el-form ref="formRef" :model="form" :rules="rules" size="large">
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" prefix-icon="User" />
+          <el-input v-model="form.username" placeholder="用户名" @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
+          <el-input v-model="form.password" type="password" placeholder="密码" show-password @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" style="width:100%" @click="handleLogin">登 录</el-button>
@@ -33,14 +33,15 @@ const rules = {
 }
 
 async function handleLogin() {
-  const valid = await formRef.value.validate().catch(() => false)
+  const valid = await formRef.value.validate().catch(function () { return false })
   if (!valid) return
+
   loading.value = true
   try {
     await userStore.login(form.username, form.password)
     router.push('/')
-  } catch {
-    // 错误已在 request 拦截器中处理
+  } catch (_e) {
+    // 错误在 request 拦截器中统一处理
   } finally {
     loading.value = false
   }

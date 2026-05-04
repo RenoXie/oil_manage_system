@@ -15,6 +15,7 @@ const stockAllRoutes = require('./routes/stockAll');
 const inventoryRoutes = require('./routes/inventory');
 const statisticsRoutes = require('./routes/statistics');
 const auditRoutes = require('./routes/audit');
+const supplierRoutes = require('./routes/suppliers');
 
 const app = express();
 
@@ -57,10 +58,15 @@ app.use('/api/stock-all', stockAllRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/suppliers', supplierRoutes);
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
 
 app.use((err, req, res, _next) => {
   const ts = new Date().toISOString();
-  console.error(`[${ts}] ${req.method} ${req.originalUrl} | user=${req.user?.id || 'anon'} |`, err.message);
+  console.error(`[${ts}] ${req.method} ${req.originalUrl} | user=${req.user?.id || 'anon'} |`, err.stack || err.message);
   if (err.status) {
     return res.status(err.status).json({ code: err.status, msg: err.message });
   }

@@ -11,16 +11,18 @@ router.use(validateDateRange);
 
 router.get('/', async (req, res) => {
   try {
-    const { start_date, end_date, category_id, vehicle_id, page = 1, page_size = 20 } = req.query;
+    const { start_date, end_date, category_id, vehicle_id, supplier_id, page = 1, page_size = 20 } = req.query;
     let query = db('stock_in')
       .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
       .join('vehicles', 'stock_in.vehicle_id', 'vehicles.id')
       .join('users', 'stock_in.operator_id', 'users.id')
+      .leftJoin('suppliers', 'stock_in.supplier_id', 'suppliers.id')
       .select(
         'stock_in.*',
         'oil_categories.name as category_name',
         'vehicles.plate_number',
-        'users.real_name as operator_name'
+        'users.real_name as operator_name',
+        'suppliers.name as supplier_name'
       )
       .where('stock_in.deletestatus', 0);
 
@@ -28,6 +30,7 @@ router.get('/', async (req, res) => {
     if (end_date) query = query.where('stock_in.stock_date', '<=', end_date);
     if (category_id) query = query.where('stock_in.oil_category_id', category_id);
     if (vehicle_id) query = query.where('stock_in.vehicle_id', vehicle_id);
+    if (supplier_id) query = query.where('stock_in.supplier_id', supplier_id);
 
     const total = await query.clone().count('* as count').first();
     const list = await query
@@ -46,7 +49,7 @@ router.get('/', async (req, res) => {
 router.post('/', requirePermission('stock-in'), async (req, res) => {
   const trx = await db.transaction();
   try {
-    const { oil_category_id, vehicle_id, price_per_liter, liters, stock_date, remark } = req.body;
+    const { oil_category_id, vehicle_id, supplier_id, price_per_liter, liters, stock_date, remark } = req.body;
     if (!oil_category_id || !vehicle_id || !price_per_liter || !liters || !stock_date) {
       await trx.rollback();
       return res.status(400).json({ code: 400, msg: '请填写完整的入库信息' });
@@ -63,10 +66,15 @@ router.post('/', requirePermission('stock-in'), async (req, res) => {
       await trx.rollback();
       return res.status(400).json({ code: 400, msg: '备注最长500字符' });
     }
+    if (supplier_id && isNaN(supplier_id)) {
+      await trx.rollback();
+      return res.status(400).json({ code: 400, msg: '供应商ID无效' });
+    }
     const total_amount = toMoney(price_per_liter * liters);
     const [id] = await db('stock_in').transacting(trx).insert({
       oil_category_id,
       vehicle_id,
+      supplier_id: supplier_id || null,
       price_per_liter,
       liters,
       total_amount,
@@ -74,7 +82,7 @@ router.post('/', requirePermission('stock-in'), async (req, res) => {
       operator_id: req.user.id,
       remark: remark || '',
     });
-    await auditLog('stock_in', id, 'create', req.user.id, null, { oil_category_id, vehicle_id, price_per_liter, liters, total_amount, stock_date, remark }, trx);
+    await auditLog('stock_in', id, 'create', req.user.id, null, { oil_category_id, vehicle_id, supplier_id: supplier_id || null, price_per_liter, liters, total_amount, stock_date, remark }, trx);
     await trx.commit();
     res.json({ code: 0, data: { id } });
   } catch (err) {
@@ -90,11 +98,13 @@ router.get('/:id', async (req, res) => {
       .join('oil_categories', 'stock_in.oil_category_id', 'oil_categories.id')
       .join('vehicles', 'stock_in.vehicle_id', 'vehicles.id')
       .join('users', 'stock_in.operator_id', 'users.id')
+      .leftJoin('suppliers', 'stock_in.supplier_id', 'suppliers.id')
       .select(
         'stock_in.*',
         'oil_categories.name as category_name',
         'vehicles.plate_number',
-        'users.real_name as operator_name'
+        'users.real_name as operator_name',
+        'suppliers.name as supplier_name'
       )
       .where('stock_in.id', req.params.id)
       .where('stock_in.deletestatus', 0)
@@ -116,10 +126,11 @@ router.put('/:id', requirePermission('stock-in'), async (req, res) => {
       return res.status(404).json({ code: 404, msg: '记录不存在' });
     }
 
-    const { oil_category_id, vehicle_id, price_per_liter, liters, stock_date, remark } = req.body;
-    const update = { operator_id: req.user.id };
+    const { oil_category_id, vehicle_id, supplier_id, price_per_liter, liters, stock_date, remark } = req.body;
+    const update = { last_modified_by: req.user.id };
     if (oil_category_id !== undefined) update.oil_category_id = oil_category_id;
     if (vehicle_id !== undefined) update.vehicle_id = vehicle_id;
+    if (supplier_id !== undefined) update.supplier_id = supplier_id || null;
     if (price_per_liter !== undefined) {
       if (isNaN(price_per_liter) || +price_per_liter <= 0) {
         await trx.rollback();
@@ -160,10 +171,10 @@ router.put('/:id', requirePermission('stock-in'), async (req, res) => {
 router.delete('/:id', requirePermission('stock-in'), async (req, res) => {
   const trx = await db.transaction();
   try {
-    const oldRecord = await db('stock_in').transacting(trx).where({ id: req.params.id }).first();
+    const oldRecord = await db('stock_in').transacting(trx).where({ id: req.params.id, deletestatus: 0 }).first();
     if (!oldRecord) {
       await trx.rollback();
-      return res.status(404).json({ code: 404, msg: '记录不存在' });
+      return res.status(404).json({ code: 404, msg: '记录不存在或已删除' });
     }
     await db('stock_in').transacting(trx).where({ id: req.params.id }).update({ deletestatus: 1 });
     await auditLog('stock_in', req.params.id, 'delete', req.user.id, oldRecord, null, trx);

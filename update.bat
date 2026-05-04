@@ -35,19 +35,19 @@ echo.
 :: ============================================
 echo [2/5] Updating code...
 
-where git >nul 2>&1
-if !errorlevel! equ 0 (
+set "GIT_BIN=D:\dev\Git\bin"
+if not exist "%GIT_BIN%\git.exe" (
+    echo        Git 未安装。如果你已手动复制最新文件，请忽略此提示。
+    echo        如尚未复制，请按 Ctrl+C 停止，复制文件后再重新运行。
+    timeout /t 5 /nobreak >nul
+) else (
     cd /d "%ROOT%"
-    git pull
+    "%GIT_BIN%\git.exe" pull
     if !errorlevel! neq 0 (
         echo [WARN] git pull failed. If you copied files manually, ignore this.
     ) else (
         echo        Code updated via git.
     )
-) else (
-    echo        Git not found - assuming files were copied manually.
-    echo        If you haven't copied the latest files yet, press Ctrl+C now and extract them first.
-    timeout /t 5 /nobreak >nul
 )
 echo.
 

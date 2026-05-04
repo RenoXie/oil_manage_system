@@ -1,7 +1,7 @@
-import request from './request'
+﻿import request from './request'
 
-export function getUsers() {
-  return request.get('/users')
+export function getUsers(params) {
+  return request.get('/users', { params })
 }
 
 export function createUser(data) {

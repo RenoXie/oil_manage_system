@@ -11,3 +11,15 @@ export function register(data) {
 export function getMe() {
   return request.get('/auth/me')
 }
+
+export function getCaptcha() {
+  return request.get('/auth/captcha')
+}
+
+export function refreshToken(refresh_token) {
+  return request.post('/auth/refresh', { refresh_token })
+}
+
+export function logout() {
+  return request.post('/auth/logout')
+}

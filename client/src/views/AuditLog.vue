@@ -11,8 +11,12 @@
       </el-form-item>
       <el-form-item label="操作表">
         <el-select v-model="filter.table_name" placeholder="全部" clearable style="width:130px">
-          <el-option label="入库" value="stock_in" />
-          <el-option label="出库" value="stock_out" />
+          <el-option v-for="t in tableOptions" :key="t.value" :label="t.label" :value="t.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="操作人">
+        <el-select v-model="filter.operator_id" placeholder="全部" clearable filterable style="width:130px">
+          <el-option v-for="u in userList" :key="u.id" :label="u.real_name" :value="u.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="动作">
@@ -33,7 +37,7 @@
       <el-table-column prop="created_at" label="时间" width="160" />
       <el-table-column prop="table_name" label="操作表" width="90">
         <template #default="{ row }">
-          <el-tag size="small">{{ row.table_name === 'stock_in' ? '入库' : '出库' }}</el-tag>
+          <el-tag size="small">{{ tableLabel(row.table_name) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="record_id" label="记录ID" width="80" />
@@ -74,12 +78,29 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getAuditLogs } from '../api/audit'
+import { getUsers } from '../api/users'
 
 const list = ref([])
 const total = ref(0)
 const loading = ref(false)
 const dateRange = ref([])
-const filter = reactive({ table_name: '', action: '', page: 1, page_size: 20 })
+const userList = ref([])
+const filter = reactive({ table_name: '', action: '', operator_id: '', page: 1, page_size: 20 })
+
+const tableOptions = [
+  { label: '入库', value: 'stock_in' },
+  { label: '出库', value: 'stock_out' },
+  { label: '油品类别', value: 'oil_categories' },
+  { label: '客户', value: 'customers' },
+  { label: '车辆', value: 'vehicles' },
+  { label: '供应商', value: 'suppliers' },
+  { label: '用户', value: 'users' },
+]
+
+function tableLabel(name) {
+  const t = tableOptions.find((x) => x.value === name)
+  return t ? t.label : name
+}
 
 const fieldLabels = {
   stock_date: '入库日期',
@@ -147,6 +168,7 @@ function clearFilters() {
   dateRange.value = []
   filter.table_name = ''
   filter.action = ''
+  filter.operator_id = ''
   filter.page = 1
   fetchData()
 }
@@ -165,7 +187,17 @@ async function fetchData() {
   } finally { loading.value = false }
 }
 
-onMounted(fetchData)
+async function loadUsers() {
+  try {
+    const res = await getUsers()
+    userList.value = res.data
+  } catch { userList.value = [] }
+}
+
+onMounted(() => {
+  loadUsers()
+  fetchData()
+})
 </script>
 
 <style scoped>

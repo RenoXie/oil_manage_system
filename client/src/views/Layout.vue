@@ -72,7 +72,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { ElMessageBox } from 'element-plus'
 import { getCustomers, updateCustomer } from '../api/customers'
-import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled, Document, Fold, Expand } from '@element-plus/icons-vue'
+import { DataAnalysis, Download, Upload, List, Odometer, TrendCharts, Van, Collection, User, UserFilled, Document, Edit, Fold, Expand } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -89,7 +89,8 @@ const allMenuItems = [
   { key: 'categories', path: '/categories', label: '油品类别', icon: Collection },
   { key: 'customers',  path: '/customers',  label: '客户管理', icon: User },
   { key: 'users',      path: '/users',      label: '用户管理', icon: UserFilled },
-  { key: 'audit',      path: '/audit',      label: '审计日志', icon: Document },
+  { key: 'audit',         path: '/audit',         label: '审计日志', icon: Document },
+  { key: 'requirements', path: '/requirements', label: '需求管理', icon: Edit },
 ]
 
 // customer profile dialog

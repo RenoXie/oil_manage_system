@@ -11,8 +11,8 @@ export function formatDate(val, showTime = false) {
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   const y = d.getFullYear()
-  const mo = d.getMonth() + 1
-  const day = d.getDate()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
   const h = String(d.getHours()).padStart(2, '0')
   const mi = String(d.getMinutes()).padStart(2, '0')
   const s = String(d.getSeconds()).padStart(2, '0')

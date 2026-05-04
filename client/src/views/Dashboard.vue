@@ -84,6 +84,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getOverview } from '../api/statistics'
 import { getInventory } from '../api/inventory'
@@ -166,6 +167,7 @@ onMounted(async () => {
     renderChart()
   } catch (err) {
     console.error('Dashboard fetch failed:', err)
+    ElMessage.error('首页数据加载失败，请刷新重试')
   } finally {
     loading.value = false
   }

@@ -8,7 +8,7 @@ router.use(adminOnly);
 
 router.get('/', async (req, res) => {
   try {
-    const { table_name, action, start_date, end_date, page = 1, page_size = 20 } = req.query;
+    const { table_name, action, operator_id, start_date, end_date, page = 1, page_size = 20 } = req.query;
 
     let query = db('audit_logs')
       .join('users', 'audit_logs.operator_id', 'users.id')
@@ -19,6 +19,7 @@ router.get('/', async (req, res) => {
 
     if (table_name) query = query.where('audit_logs.table_name', table_name);
     if (action) query = query.where('audit_logs.action', action);
+    if (operator_id) query = query.where('audit_logs.operator_id', +operator_id);
     if (start_date) query = query.where('audit_logs.created_at', '>=', start_date);
     if (end_date) query = query.where('audit_logs.created_at', '<=', end_date + ' 23:59:59');
 

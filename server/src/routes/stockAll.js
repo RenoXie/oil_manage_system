@@ -81,8 +81,10 @@ router.get('/', async (req, res) => {
       outQuery = outQuery.where('stock_out.customer_id', custId || 0);
     }
 
-    const unionSQL = `${inQuery.toString()} UNION ALL ${outQuery.toString()}`;
     const ps = +page_size;
+
+    // 安全的 UNION ALL：使用 Knex 参数绑定替代字符串拼接
+    const unionSub = db.raw('? UNION ALL ?', [inQuery, outQuery]);
 
     // summary queries (run in parallel with list query)
     const inSummary = db('stock_in')
@@ -148,13 +150,13 @@ router.get('/', async (req, res) => {
       .groupBy('purchase_date');
 
     // Database-level pagination via UNION ALL
-    const countPromise = db.raw(`SELECT COUNT(*) as count FROM (${unionSQL}) as combined`)
+    const countPromise = db.raw('SELECT COUNT(*) as count FROM (?) as combined', [unionSub])
       .then(r => r[0][0].count);
 
     const listPromise = ps > 0
-      ? db.raw(`SELECT * FROM (${unionSQL}) as combined ORDER BY date DESC, id DESC LIMIT ? OFFSET ?`,
-          [ps, (+page - 1) * ps]).then(r => r[0])
-      : db.raw(`SELECT * FROM (${unionSQL}) as combined ORDER BY date DESC, id DESC`)
+      ? db.raw('SELECT * FROM (?) as combined ORDER BY date DESC, id DESC LIMIT ? OFFSET ?',
+          [unionSub, ps, (+page - 1) * ps]).then(r => r[0])
+      : db.raw('SELECT * FROM (?) as combined ORDER BY date DESC, id DESC', [unionSub])
           .then(r => r[0]);
 
     const [totalRow, list, inSum, outSum, inDailyRows, outDailyRows] = await Promise.all([

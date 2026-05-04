@@ -175,7 +175,7 @@ router.put('/:id', requirePermission('stock-out'), async (req, res) => {
     }
 
     const { oil_category_id, vehicle_id, customer_id, unit_price, liters, purchase_date, remark } = req.body;
-    const update = { operator_id: req.user.id };
+    const update = { last_modified_by: req.user.id };
     if (oil_category_id !== undefined) update.oil_category_id = oil_category_id;
     if (vehicle_id !== undefined) update.vehicle_id = vehicle_id;
     if (customer_id !== undefined) update.customer_id = customer_id;
@@ -219,10 +219,10 @@ router.put('/:id', requirePermission('stock-out'), async (req, res) => {
 router.delete('/:id', requirePermission('stock-out'), async (req, res) => {
   const trx = await db.transaction();
   try {
-    const oldRecord = await db('stock_out').transacting(trx).where({ id: req.params.id }).first();
+    const oldRecord = await db('stock_out').transacting(trx).where({ id: req.params.id, deletestatus: 0 }).first();
     if (!oldRecord) {
       await trx.rollback();
-      return res.status(404).json({ code: 404, msg: '记录不存在' });
+      return res.status(404).json({ code: 404, msg: '记录不存在或已删除' });
     }
     await db('stock_out').transacting(trx).where({ id: req.params.id }).update({ deletestatus: 1 });
     await auditLog('stock_out', req.params.id, 'delete', req.user.id, oldRecord, null, trx);

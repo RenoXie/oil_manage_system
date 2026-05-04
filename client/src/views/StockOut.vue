@@ -181,6 +181,7 @@ import { getStockOutList, createStockOut, updateStockOut, deleteStockOut } from 
 import { getVehicles } from '../api/vehicles'
 import { getCategories } from '../api/categories'
 import { getCustomers, createCustomer } from '../api/customers'
+import { getInventory } from '../api/inventory'
 import { useUserStore } from '../stores/user'
 import { formatDate, getCurrentMonthRange } from '../utils/date'
 import { exportToExcel } from '../utils/export'
@@ -194,6 +195,7 @@ const loading = ref(false)
 const vehicles = ref([])
 const categories = ref([])
 const customers = ref([])
+const inventory = ref([])
 const dateRange = ref(getCurrentMonthRange())
 const customerFilter = ref('')
 const dialogCustomerFilter = ref('')
@@ -218,6 +220,7 @@ const editId = ref(null)
 const saving = ref(false)
 const formRef = ref(null)
 const originalFormJson = ref('')
+const oldLiters = ref(0)
 const form = reactive({
   purchase_date: '', customer_id: '', vehicle_id: '', oil_category_id: '',
   unit_price: 0, liters: 0, remark: '',
@@ -257,6 +260,7 @@ async function openDialog(row) {
   if (!customers.value.length) await loadCustomers()
   if (row) {
     editId.value = row.id
+    oldLiters.value = +row.liters
     Object.assign(form, {
       purchase_date: row.purchase_date,
       customer_id: row.customer_id,
@@ -274,6 +278,35 @@ async function openDialog(row) {
 async function handleSave() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+
+  // 库存不足软提醒：检查车辆+油品的剩余库存
+  const item = inventory.value.find(
+    (x) => x.vehicle_id === form.vehicle_id && x.category_id === form.oil_category_id
+  )
+  if (item) {
+    const remaining = +item.remaining
+    const outLiters = +form.liters
+    // 编辑时，排除旧出库量的影响（用原始剩余 + 旧出库量）
+    let checkRemaining = remaining
+    if (editId.value) {
+      const oldRemaining = remaining + oldLiters.value
+      checkRemaining = oldRemaining - outLiters
+    } else {
+      checkRemaining = remaining - outLiters
+    }
+    if (checkRemaining < 0) {
+      try {
+        await ElMessageBox.confirm(
+          `当前"${item.plate_number} - ${item.category_name}"的库存剩余 ${remaining.toFixed(2)}L，本次出库后将超出库存。请确认数据无误。`,
+          '库存不足',
+          { type: 'warning', confirmButtonText: '确认继续', cancelButtonText: '返回修改' }
+        )
+      } catch {
+        return
+      }
+    }
+  }
+
   saving.value = true
   try {
     if (editId.value) {
@@ -459,6 +492,10 @@ onMounted(async () => {
   vehicles.value = v.data
   categories.value = c.data
   customers.value = cu.data
+  try {
+    const invRes = await getInventory()
+    inventory.value = invRes.data
+  } catch { /* ignore */ }
   fetchData()
 })
 </script>

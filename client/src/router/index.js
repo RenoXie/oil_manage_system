@@ -1,5 +1,35 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+function getToken() {
+  return localStorage.getItem('token') || ''
+}
+
+function base64UrlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/')
+  while (str.length % 4) str += '='
+  return atob(str)
+}
+
+function isTokenExpired() {
+  const token = getToken()
+  if (!token) return true
+  try {
+    const payload = JSON.parse(base64UrlDecode(token.split('.')[1]))
+    return payload.exp * 1000 < Date.now()
+  } catch {
+    return true
+  }
+}
+
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')
+  } catch { return null }
+}
+
+const adminOnly = ['Users', 'AuditLog']
+const customerBlocked = ['StockIn', 'StockAll', 'Inventory', 'Statistics', 'Vehicles', 'Categories', 'Customers']
+
 const routes = [
   {
     path: '/login',
@@ -23,6 +53,7 @@ const routes = [
       { path: 'statistics', name: 'Statistics', component: () => import('../views/Statistics.vue'), meta: { title: '统计报表' } },
       { path: 'users', name: 'Users', component: () => import('../views/Users.vue'), meta: { title: '用户管理' } },
       { path: 'audit', name: 'AuditLog', component: () => import('../views/AuditLog.vue'), meta: { title: '审计日志' } },
+      { path: 'requirements', name: 'Requirements', component: () => import('../views/Requirements.vue'), meta: { title: '需求管理' } },
     ],
   },
 ]
@@ -33,12 +64,27 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('token')
-  if (to.meta.public || token) {
-    next()
-  } else {
-    next('/login')
+  if (to.meta.public) {
+    return next()
   }
+  if (isTokenExpired()) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return next('/login')
+  }
+  const user = getUser()
+  if (!user) return next('/login')
+
+  // admin-only pages
+  if (adminOnly.includes(to.name) && user.role !== 'admin') {
+    return next('/dashboard')
+  }
+  // customer-blocked pages
+  if (user.role === 'customer' && customerBlocked.includes(to.name)) {
+    return next('/stock-out')
+  }
+
+  next()
 })
 
 export default router

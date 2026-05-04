@@ -10,31 +10,31 @@ router.use(validateDateRange);
 
 router.get('/', async (req, res) => {
   try {
+    // 用 CROSS JOIN + LEFT JOIN 分别汇总入/出库，避免 OR 条件的笛卡尔积
     const result = await db.raw(`
       SELECT
         v.id AS vehicle_id,
         v.plate_number,
-        COALESCE(oc.id, 0) AS category_id,
-        COALESCE(oc.name, '未知') AS category_name,
-        COALESCE(SUM(si.total_liters), 0) AS total_in,
-        COALESCE(SUM(so.total_liters), 0) AS total_out,
-        COALESCE(SUM(si.total_liters), 0) - COALESCE(SUM(so.total_liters), 0) AS remaining
+        oc.id AS category_id,
+        oc.name AS category_name,
+        COALESCE(si.total_liters, 0) AS total_in,
+        COALESCE(so.total_liters, 0) AS total_out,
+        COALESCE(si.total_liters, 0) - COALESCE(so.total_liters, 0) AS remaining
       FROM vehicles v
+      CROSS JOIN oil_categories oc
       LEFT JOIN (
         SELECT vehicle_id, oil_category_id, SUM(liters) AS total_liters
         FROM stock_in
         WHERE deletestatus = 0
         GROUP BY vehicle_id, oil_category_id
-      ) si ON v.id = si.vehicle_id
+      ) si ON v.id = si.vehicle_id AND oc.id = si.oil_category_id
       LEFT JOIN (
         SELECT vehicle_id, oil_category_id, SUM(liters) AS total_liters
         FROM stock_out
         WHERE deletestatus = 0
         GROUP BY vehicle_id, oil_category_id
-      ) so ON v.id = so.vehicle_id AND si.oil_category_id = so.oil_category_id
-      LEFT JOIN oil_categories oc ON (oc.id = si.oil_category_id OR oc.id = so.oil_category_id)
-      WHERE v.deletestatus = 0
-      GROUP BY v.id, v.plate_number, oc.id, oc.name
+      ) so ON v.id = so.vehicle_id AND oc.id = so.oil_category_id
+      WHERE v.deletestatus = 0 AND oc.deletestatus = 0
       HAVING remaining != 0
       ORDER BY v.id, oc.id
     `);
