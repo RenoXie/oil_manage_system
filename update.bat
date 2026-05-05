@@ -92,9 +92,23 @@ if !errorlevel! neq 0 (
 echo.
 
 :: ============================================
-:: 5. Start services
+:: 5. Check .env & start services
 :: ============================================
-echo [5/5] Starting services...
+echo [5/5] Checking config and starting services...
+
+cd /d "%ROOT%server"
+findstr /c:"JWT_SECRET" .env >nul 2>&1
+if !errorlevel! neq 0 (
+    echo        JWT_SECRET not found. Adding one to .env ...
+    for /f "tokens=*" %%k in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')"') do set "GEN_KEY=%%k"
+    echo JWT_SECRET=!GEN_KEY!>> .env
+    echo JWT_EXPIRES_IN=24h>> .env
+    echo        Generated new JWT_SECRET.
+    timeout /t 1 /nobreak >nul
+) else (
+    echo        JWT_SECRET is configured.
+)
+echo.
 
 for /f "tokens=2 delims=v." %%m in ('node -v') do set NODE_MAJOR=%%m
 if !NODE_MAJOR! geq 18 (
